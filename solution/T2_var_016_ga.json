@@ -1,0 +1,35 @@
+[
+  {
+    "node_id": 51,
+    "task_id": 0,
+    "start_time": 0.0,
+    "end_time": 790.0,
+    "dependencies": []
+  },
+  {
+    "node_id": 51,
+    "task_id": 1,
+    "start_time": 857.0,
+    "end_time": 1149.0,
+    "dependencies": [
+      {
+        "task_id": 0,
+        "path_id": "183650",
+        "message_size": 17.0
+      }
+    ]
+  },
+  {
+    "node_id": 52,
+    "task_id": 2,
+    "start_time": 887.0,
+    "end_time": 1334.0,
+    "dependencies": [
+      {
+        "task_id": 0,
+        "path_id": "49712",
+        "message_size": 47.0
+      }
+    ]
+  }
+]

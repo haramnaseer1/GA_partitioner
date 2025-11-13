@@ -1,0 +1,115 @@
+{
+  "platform": {
+    "nodes": [
+      {
+        "id": 51,
+        "is_router": false,
+        "type_of_processor": "General purpose CPU",
+        "clocking_speed": "1.5 GHz"
+        
+      },
+      {
+        "id": 52,
+        "is_router": false,
+        "type_of_processor": "Raspberry Pi 5",
+        "clocking_speed": "2.4 GHz"
+        
+      },
+      {
+        "id": 53,
+        "is_router": false,
+        "type_of_processor": "FPGA",
+        "clocking_speed": "16 MHz"
+        
+      },
+      {
+        "id": 54,
+        "is_router": false,
+        "type_of_processor": "FPGA",
+        "clocking_speed": "300 MHz"
+        
+      },
+      {
+        "id": 50001,
+        "is_router": true
+      },
+      {
+        "id": 50002,
+        "is_router": true
+      },
+      {
+        "id": 50003,
+        "is_router": true
+      },
+      {
+        "id": 50004,
+        "is_router": true
+      },
+      {
+        "id": 50,
+        "is_router": true,
+        "type_of_processor": "Edge_Gateway_5"
+      }
+    ],
+    "links": [
+      {
+        "start": 51,
+        "end": 50001
+      },
+      {
+        "start": 52,
+        "end": 50002
+      },
+      {
+        "start": 53,
+        "end": 50003
+      },
+      {
+        "start": 54,
+        "end": 50004
+      },
+      {
+        "start": 50001,
+        "end": 50002
+      },
+      {
+        "start": 50002,
+        "end": 50003
+      },
+      {
+        "start": 50002,
+        "end": 50004
+      },
+      {
+        "start": 50001,
+        "end": 50
+      },
+      {
+        "start": 50002,
+        "end": 50
+      },
+      {
+        "start": 50003,
+        "end": 50
+      },
+      {
+        "start": 50004,
+        "end": 50
+      }
+
+
+    ],
+    "frequencies": [
+      500,
+      1000
+    ],
+    "schemes": [
+      {
+        "id": 0,
+        "wcdt": 0,
+        "wcct": 0,
+        "wccr": 1
+      }
+    ]
+  }
+}

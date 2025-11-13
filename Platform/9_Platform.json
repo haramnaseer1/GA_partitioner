@@ -1,0 +1,168 @@
+{
+  "platform": {
+    "nodes": [
+      {
+        "id": 91,
+        "is_router": false,
+        "type_of_processor": "General purpose CPU",
+        "clocking_speed": "1 GHz"
+      },
+      {
+        "id": 92,
+        "is_router": false,
+        "type_of_processor": "FPGA",
+        "clocking_speed": "300 MHz"
+        
+      },
+      {
+        "id": 93,
+        "is_router": false,
+        "type_of_processor": "Raspberry Pi 5",
+        "clocking_speed": "2.4 GHz"
+        
+      },
+      {
+        "id": 94,
+        "is_router": false,
+        "type_of_processor": "Microcontroller",
+        "clocking_speed": "16 MHz"
+        
+      },
+      {
+        "id": 95,
+        "is_router": false,
+        "type_of_processor": "General purpose CPU",
+        "clocking_speed": "1.5 GHz"
+        
+      },
+      {
+        "id": 96,
+        "is_router": false,
+        "type_of_processor": "Raspberry Pi 5",
+        "clocking_speed": "2.4 GHz"
+      
+      },
+      {
+        "id": 90001,
+        "is_router": true
+      },
+      {
+        "id": 90002,
+        "is_router": true
+      },
+      {
+        "id": 90003,
+        "is_router": true
+      },
+      {
+        "id": 90004,
+        "is_router": true
+      },
+      {
+        "id": 90005,
+        "is_router": true
+      },
+      {
+        "id": 90006,
+        "is_router": true
+      },
+      {
+        "id": 90,
+        "is_router": true,
+        "type_of_processor": "Edge_Gateway_9"
+      }
+    ],
+    "links": [
+      {
+        "start": 91,
+        "end": 90001
+      },
+      {
+        "start": 92,
+        "end": 90002
+      },
+      {
+        "start": 93,
+        "end": 90003
+      },
+      {
+        "start": 94,
+        "end": 90004
+      },
+      {
+        "start": 95,
+        "end": 90005
+      },
+      {
+        "start": 96,
+        "end": 90006
+      },
+      {
+        "start": 90001,
+        "end": 90002
+      },
+      {
+        "start": 90001,
+        "end": 90003
+      },
+      {
+        "start": 90002,
+        "end": 90004
+      },
+      {
+        "start": 90003,
+        "end": 90004
+      },
+      {
+        "start": 90003,
+        "end": 90005
+      },
+      {
+        "start": 90004,
+        "end": 90006
+      },
+      {
+        "start": 90005,
+        "end": 90006
+      },
+      {
+        "start": 90001,
+        "end": 90
+      },
+      {
+        "start": 90002,
+        "end": 90
+      },
+      {
+        "start": 90003,
+        "end": 90
+      },
+      {
+        "start": 90004,
+        "end": 90
+      },
+      {
+        "start": 90005,
+        "end": 90
+      },
+      {
+        "start": 90006,
+        "end": 90
+      }
+
+
+    ],
+    "frequencies": [
+      500,
+      1000
+    ],
+    "schemes": [
+      {
+        "id": 0,
+        "wcdt": 0,
+        "wcct": 0,
+        "wccr": 1
+      }
+    ]
+  }
+}

@@ -1,0 +1,248 @@
+{
+  "platform": {
+    "nodes": [
+      {
+        "id": 11,
+        "is_router": false,
+        "type_of_processor": "General purpose CPU",
+        "clocking_speed": "1 GHz"
+        
+      },
+      {
+        "id": 12,
+        "is_router": false,
+        "type_of_processor": "FPGA",
+        "clocking_speed": "300 MHz"
+        
+      },
+      {
+        "id": 13,
+        "is_router": false,
+        "type_of_processor": "Raspberry Pi 5",
+        "clocking_speed": "2.4 GHz"
+        
+      },
+      {
+        "id": 14,
+        "is_router": false,
+        "type_of_processor": "Microcontroller",
+        "clocking_speed": "16 MHz"
+        
+      },
+      {
+        "id": 15,
+        "is_router": false,
+        "type_of_processor": "Microcontroller",
+        "clocking_speed": "16 MHz"
+        
+      },
+      {
+        "id": 16,
+        "is_router": false,
+        "type_of_processor": "Raspberry Pi 5",
+        "clocking_speed": "2.4 GHz"
+      
+      },
+      {
+        "id": 17,
+        "is_router": false,
+        "type_of_processor": "FPGA",
+        "clocking_speed": "600 MHz"
+        
+      },
+      {
+        "id": 18,
+        "is_router": false,
+        "type_of_processor": "General purpose CPU",
+        "clocking_speed": "1.5 GHz",
+        "number_of_cores": 4
+       
+      },
+      {
+        "id": 19,
+        "is_router": false,
+        "type_of_processor": "General purpose CPU",
+        "clocking_speed": "1 GHz",
+        "number_of_cores": 8
+       
+      },
+      {
+        "id": 10001,
+        "is_router": true
+      },
+      {
+        "id": 10002,
+        "is_router": true
+      },
+      {
+        "id": 10003,
+        "is_router": true
+      },
+      {
+        "id": 10004,
+        "is_router": true
+      },
+      {
+        "id": 10005,
+        "is_router": true
+      },
+      {
+        "id": 10006,
+        "is_router": true
+      },
+      {
+        "id": 10007,
+        "is_router": true
+      },
+      {
+        "id": 10008,
+        "is_router": true
+      },
+      {
+        "id": 10009,
+        "is_router": true
+      },
+      {
+        "id": 10,
+        "is_router": true,
+        "type_of_processor": "Edge_Gateway_1"
+      }
+    ],
+    "links": [
+      {
+        "start": 11,
+        "end": 10001
+      },
+      {
+        "start": 12,
+        "end": 10002
+      },
+      {
+        "start": 13,
+        "end": 10003
+      },
+      {
+        "start": 14,
+        "end": 10004
+      },
+      {
+        "start": 15,
+        "end": 10005
+      },
+      {
+        "start": 16,
+        "end": 10006
+      },
+      {
+        "start": 17,
+        "end": 10007
+      },
+      {
+        "start": 18,
+        "end": 10008
+      },
+      {
+        "start": 19,
+        "end": 10009
+      },
+      {
+        "start": 10001,
+        "end": 10002
+      },
+      {
+        "start": 10002,
+        "end": 10003
+      },
+      {
+        "start": 10001,
+        "end": 10004
+      },
+      {
+        "start": 10002,
+        "end": 10005
+      },
+      {
+        "start": 10003,
+        "end": 10006
+      },
+      {
+        "start": 10004,
+        "end": 10005
+      },
+      {
+        "start": 10005,
+        "end": 10006
+      },
+      {
+        "start": 10004,
+        "end": 10007
+      },
+      {
+        "start": 10005,
+        "end": 10008
+      },
+      {
+        "start": 10006,
+        "end": 10009
+      },
+      {
+        "start": 10007,
+        "end": 10008
+      },
+      {
+        "start": 10008,
+        "end": 10009
+      },
+      {
+        "start": 10001,
+        "end": 10
+      },
+      {
+        "start": 10002,
+        "end": 10
+      },
+      {
+        "start": 10003,
+        "end": 10
+      },
+      {
+        "start": 10004,
+        "end": 10
+      },
+      {
+        "start": 10005,
+        "end": 10
+      },
+      {
+        "start": 10006,
+        "end": 10
+      },
+      {
+        "start": 10007,
+        "end": 10
+      },
+      {
+        "start": 10008,
+        "end": 10
+      },
+      {
+        "start": 10009,
+        "end": 10
+      }
+
+
+    ],
+    "frequencies": [
+      500,
+      1000
+    ],
+    "schemes": [
+      {
+        "id": 0,
+        "wcdt": 0,
+        "wcct": 0,
+        "wccr": 1
+      }
+    ]
+  }
+}

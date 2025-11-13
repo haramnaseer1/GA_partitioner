@@ -1,0 +1,660 @@
+{
+  "platform": {
+    "nodes": [
+      {
+        "id": 3001,
+        "is_router": false,
+        "type_of_processor": "General purpose CPU",
+        "clocking_speed": "2.5 GHz"
+      },
+      {
+        "id": 3002,
+        "is_router": false,
+        "type_of_processor": "General purpose CPU",
+        "clocking_speed": "2.5 GHz"
+        
+      },
+      {
+        "id": 3003,
+        "is_router": false,
+        "type_of_processor": "General purpose CPU",
+        "clocking_speed": "2.5 GHz"
+        
+      },
+      {
+        "id": 3004,
+        "is_router": false,
+        "type_of_processor": "General purpose CPU",
+        "clocking_speed": "2.5 GHz"
+        
+      },
+      {
+        "id": 3005,
+        "is_router": false,
+        "type_of_processor": "FPGA",
+        "clocking_speed": "900 MHz"
+        
+      },
+      {
+        "id": 3006,
+        "is_router": false,
+        "type_of_processor": "FPGA",
+        "clocking_speed": "900 MHz"
+      
+      },
+      {
+        "id": 3007,
+        "is_router": false,
+        "type_of_processor": "FPGA",
+        "clocking_speed": "900 MHz"
+        
+      },
+      {
+        "id": 3008,
+        "is_router": false,
+        "type_of_processor": "High Performance CPU",
+        "clocking_speed": "3.5 GHz"
+       
+      },
+      {
+        "id": 3009,
+        "is_router": false,
+        "type_of_processor": "High Performance CPU",
+        "clocking_speed": "3.5 GHz"
+       
+      },
+      {
+        "id": 3010,
+        "is_router": false,
+        "type_of_processor": "High Performance CPU",
+        "clocking_speed": "3.5 GHz"
+        
+      },
+      {
+        "id": 3011,
+        "is_router": false,
+        "type_of_processor": "High Performance CPU",
+        "clocking_speed": "3.5 GHz"
+        
+      },
+      {
+        "id": 3012,
+        "is_router": false,
+        "type_of_processor": "High Performance CPU",
+        "clocking_speed": "3.5 GHz"
+      },
+      {
+        "id": 3013,
+        "is_router": false,
+        "type_of_processor": "High Performance CPU",
+        "clocking_speed": "3.5 GHz"
+        
+      },
+      {
+        "id": 3014,
+        "is_router": false,
+        "type_of_processor": "High Performance CPU",
+        "clocking_speed": "3.5 GHz"
+       
+      },
+      {
+        "id": 3015,
+        "is_router": false,
+        "type_of_processor": "High Performance CPU",
+        "clocking_speed": "3.5 GHz"
+       
+      },
+      {
+        "id": 3016,
+        "is_router": false,
+        "type_of_processor": "High Performance CPU",
+        "clocking_speed": "3.5 GHz"
+        
+      },
+      {
+        "id": 3017,
+        "is_router": false,
+        "type_of_processor": "High Performance CPU",
+        "clocking_speed": "3.5 GHz"
+      
+      },
+      {
+        "id": 3018,
+        "is_router": false,
+        "type_of_processor": "High Performance CPU",
+        "clocking_speed": "3.5 GHz"
+        
+      },
+      {
+        "id": 3019,
+        "is_router": false,
+        "type_of_processor": "High Performance CPU",
+        "clocking_speed": "3.5 GHz"
+       
+      },
+      {
+        "id": 3020,
+        "is_router": false,
+        "type_of_processor": "Graphical Processing Unit",
+        "clocking_speed": "2.5 GHz"
+       
+      },
+      {
+        "id": 3021,
+        "is_router": false,
+        "type_of_processor": "Graphical Processing Unit",
+        "clocking_speed": "2.5 GHz"
+        
+      },
+      {
+        "id": 3022,
+        "is_router": false,
+        "type_of_processor": "Graphical Processing Unit",
+        "clocking_speed": "2.5 GHz"
+        
+      },
+      {
+        "id": 3023,
+        "is_router": false,
+        "type_of_processor": "Graphical Processing Unit",
+        "clocking_speed": "2.5 GHz"
+      },
+      {
+        "id": 3024,
+        "is_router": false,
+        "type_of_processor": "Graphical Processing Unit",
+        "clocking_speed": "2.5 GHz"
+        
+      },
+      {
+        "id": 3025,
+        "is_router": false,
+        "type_of_processor": "Graphical Processing Unit",
+        "clocking_speed": "2.5 GHz"
+       
+      },
+      {
+        "id": 301,
+        "is_router": true
+      },
+      {
+        "id": 302,
+        "is_router": true
+      },
+      {
+        "id": 303,
+        "is_router": true
+      },
+      {
+        "id": 304,
+        "is_router": true
+      },
+      {
+        "id": 305,
+        "is_router": true
+      },
+      {
+        "id": 306,
+        "is_router": true
+      },
+      {
+        "id": 307,
+        "is_router": true
+      },
+      {
+        "id": 308,
+        "is_router": true
+      },
+      {
+        "id": 309,
+        "is_router": true
+      },
+      {
+        "id": 310,
+        "is_router": true
+      },
+      {
+        "id": 311,
+        "is_router": true
+      },
+      {
+        "id": 312,
+        "is_router": true
+      },
+      {
+        "id": 313,
+        "is_router": true
+      },
+      {
+        "id": 314,
+        "is_router": true
+      },
+      {
+        "id": 315,
+        "is_router": true
+      },
+      {
+        "id": 316,
+        "is_router": true
+      },
+      {
+        "id": 317,
+        "is_router": true
+      },
+      {
+        "id": 318,
+        "is_router": true
+      },
+      {
+        "id": 319,
+        "is_router": true
+      },
+      {
+        "id": 320,
+        "is_router": true
+      },
+      {
+        "id": 321,
+        "is_router": true
+      },
+      {
+        "id": 322,
+        "is_router": true
+      },
+      {
+        "id": 323,
+        "is_router": true
+      },
+      {
+        "id": 324,
+        "is_router": true
+      },
+      {
+        "id": 325,
+        "is_router": true
+      },
+      {
+        "id": 3000,
+        "is_router": true,
+        "type_of_processor": "Cloud_Gateway_3"
+      }
+
+    ],
+    "links": [
+      {
+        "start": 301,
+        "end": 3001
+      },
+      {
+        "start": 302,
+        "end": 3002
+      },
+      {
+        "start": 303,
+        "end": 3003
+      },
+      {
+        "start": 304,
+        "end": 3004
+      },
+      {
+        "start": 305,
+        "end": 3005
+      },
+      {
+        "start": 306,
+        "end": 3006
+      },
+      {
+        "start": 307,
+        "end": 3007
+      },
+      {
+        "start": 308,
+        "end": 3008
+      },
+      {
+        "start": 309,
+        "end": 3009
+      },
+      {
+        "start": 310,
+        "end": 3010
+      },
+      {
+        "start": 311,
+        "end": 3011
+      },
+      {
+        "start": 312,
+        "end": 3012
+      },
+      {
+        "start": 313,
+        "end": 3013
+      },
+      {
+        "start": 314,
+        "end": 3014
+      },
+      {
+        "start": 315,
+        "end": 3015
+      },
+      {
+         "start": 316,
+        "end": 3016
+      },
+      {
+         "start": 317,
+        "end": 3017
+      },
+      {
+         "start": 318,
+        "end": 3018
+      },
+      {
+         "start": 319,
+        "end": 3019
+      },
+      {
+         "start": 320,
+        "end": 3020
+      },
+      {
+         "start": 321,
+        "end": 3021
+      },
+      {
+         "start": 322,
+        "end": 3022
+      },
+      {
+         "start": 323,
+        "end": 3023
+      },
+      {
+         "start": 324,
+        "end": 3024
+      },
+      {
+         "start": 325,
+        "end": 3025
+      },
+      {
+         "start": 301,
+        "end": 302
+      },
+      {
+         "start": 302,
+        "end": 303
+      },
+      {
+         "start": 303,
+        "end": 304
+      },
+      {
+         "start": 304,
+        "end": 305
+      },
+      {
+         "start": 301,
+        "end": 306
+      },
+      {
+          "start": 302,
+          "end": 307
+      },
+      {
+        "start": 303,
+        "end": 308
+      },
+      {
+        "start": 304,
+        "end": 309
+      },
+      {
+        "start": 305,
+        "end": 310
+      },
+      {
+        "start": 306,
+        "end": 307
+      },
+      {
+        "start": 307,
+        "end": 308
+      },
+      {
+        "start": 308,
+        "end": 309
+      },
+      {
+        "start": 309,
+        "end": 310
+      },
+      {
+        "start": 306,
+        "end": 311
+      },
+      {
+        "start": 307,
+        "end": 312
+      },
+      {
+        "start": 308,
+        "end": 313
+      },
+      {
+        "start": 309,
+        "end": 314
+      },
+      {
+        "start": 310,
+        "end": 315
+      },
+      {
+        "start": 311,
+        "end": 312
+      },
+      {
+        "start": 312,
+        "end": 313
+      },
+      {
+        "start": 313,
+        "end": 314
+      },
+      {
+        "start": 314,
+        "end": 315
+      },
+      {
+        "start": 311,
+        "end": 316
+      },
+      {
+        "start": 312,
+        "end": 317
+      },
+      {
+        "start": 313,
+        "end": 318
+      },
+      {
+        "start": 314,
+        "end": 319
+      },
+      {
+        "start": 315,
+        "end": 320
+      },
+      {
+        "start": 316,
+        "end": 317
+      },
+      {
+        "start": 317,
+        "end": 318
+      },
+      {
+        "start": 318,
+        "end": 319
+      },
+      {
+        "start": 319,
+        "end": 320
+      },
+      {
+        "start": 316,
+        "end": 321
+      },
+      {
+        "start": 317,
+        "end": 322
+      },
+      {
+        "start": 318,
+        "end": 323
+      },
+      {
+        "start": 319,
+        "end": 324
+      },
+      {
+        "start": 320,
+        "end": 325
+      },
+      {
+        "start": 321,
+        "end": 322
+      },
+      {
+        "start": 322,
+        "end": 323
+      },
+      {
+        "start": 323,
+        "end": 324
+      },
+      {
+        "start": 324,
+        "end": 325
+      },
+      {
+        "start": 3000,
+        "end": 301
+      },
+      {
+        "start": 3000,
+        "end": 302
+      },
+      {
+        "start": 3000,
+        "end": 303
+      },
+      {
+        "start": 3000,
+        "end": 304
+      },
+      {
+        "start": 3000,
+        "end": 305
+      },
+      {
+        "start": 3000,
+        "end": 306
+      },
+      {
+        "start": 3000,
+        "end": 307
+      },
+      {
+        "start": 3000,
+        "end": 308
+      },
+      {
+        "start": 3000,
+        "end": 309
+      },
+      {
+        "start": 3000,
+        "end": 310
+      },
+      {
+        "start": 3000,
+        "end": 311
+      },
+      {
+        "start": 3000,
+        "end": 312
+      },
+      {
+        "start": 3000,
+        "end": 313
+      },
+      {
+        "start": 3000,
+        "end": 314
+      },
+      {
+        "start": 3000,
+        "end": 315
+      },
+      {
+        "start": 3000,
+        "end": 316
+      },
+      {
+        "start": 3000,
+        "end": 317
+      },
+      {
+        "start": 3000,
+        "end": 318
+      },
+      {
+        "start": 3000,
+        "end": 319
+      },
+      {
+        "start": 3000,
+        "end": 320
+      },
+      {
+        "start": 3000,
+        "end": 321
+      },
+      {
+        "start": 3000,
+        "end": 322
+      },
+      {
+        "start": 3000,
+        "end": 323
+      },
+      {
+        "start": 3000,
+        "end": 324
+      },
+      {
+        "start": 3000,
+        "end": 325
+      }
+
+
+    ],
+    "frequencies": [
+      500,
+      1000
+    ],
+    "schemes": [
+      {
+        "id": 0,
+        "wcdt": 0,
+        "wcct": 0,
+        "wccr": 1
+      }
+    ]
+  }
+}

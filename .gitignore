@@ -1,0 +1,62 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Large data files (optional - uncomment if you want to exclude)
+# solution/*.json
+# gnn_solution/*.pkl
+# gnn_solution/*.pt
+
+# Temporary files
+Combined_SubGraphs/
+SubGP_from_DFS_/
+SubGraphs/
+*.tmp
+*.bak
+
+# Logs (keep directory but ignore contents)
+Logs/*.log
+Logs/*.txt
+!Logs/.gitkeep
+
+# Figures
+Figures/
+fig_dir_path/
+
+# Old/temporary GNN solution files
+gnn_solution/T2_gnn_*.json

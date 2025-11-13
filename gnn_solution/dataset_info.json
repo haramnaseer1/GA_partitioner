@@ -1,0 +1,29 @@
+{
+  "num_samples": 107,
+  "feature_dimensions": {
+    "node_feature_dim": 10,
+    "edge_feature_dim": 2,
+    "platform_feature_dim": 4,
+    "num_classes": 3
+  },
+  "metadata": {
+    "num_samples": 107,
+    "num_resource_types": 6,
+    "num_tiers": 3,
+    "total_applications": 107,
+    "resource_type_mapping": {
+      "General purpose CPU": 1,
+      "FPGA": 2,
+      "Raspberry Pi 5": 3,
+      "Microcontroller": 4,
+      "High Performance CPU": 5,
+      "GPU": 6
+    }
+  },
+  "sample_statistics": {
+    "avg_num_tasks": 48.57943925233645,
+    "avg_num_edges": 310.8785046728972,
+    "min_tasks": 3,
+    "max_tasks": 100
+  }
+}

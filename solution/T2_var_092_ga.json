@@ -1,0 +1,123 @@
+[
+  {
+    "node_id": 51,
+    "task_id": 3,
+    "start_time": 0.0,
+    "end_time": 9.666666666666667e-08,
+    "dependencies": []
+  },
+  {
+    "node_id": 52,
+    "task_id": 5,
+    "start_time": 0.0,
+    "end_time": 1.5458333333333334e-07,
+    "dependencies": []
+  },
+  {
+    "node_id": 52,
+    "task_id": 1,
+    "start_time": 95.00005425,
+    "end_time": 492.00005425,
+    "dependencies": [
+      {
+        "task_id": 0,
+        "path_id": "00",
+        "message_size": 45.0
+      }
+    ]
+  },
+  {
+    "node_id": 52,
+    "task_id": 6,
+    "start_time": 583.00005425,
+    "end_time": 583.00005435625,
+    "dependencies": [
+      {
+        "task_id": 1,
+        "path_id": "183660",
+        "message_size": 41.0
+      },
+      {
+        "task_id": 0,
+        "path_id": "00",
+        "message_size": 45.0
+      }
+    ]
+  },
+  {
+    "node_id": 53,
+    "task_id": 0,
+    "start_time": 0.0,
+    "end_time": 3.8625e-05,
+    "dependencies": []
+  },
+  {
+    "node_id": 53,
+    "task_id": 8,
+    "start_time": 0.0,
+    "end_time": 1.35625e-05,
+    "dependencies": []
+  },
+  {
+    "node_id": 53,
+    "task_id": 2,
+    "start_time": 91.00005425,
+    "end_time": 738.00005425,
+    "dependencies": [
+      {
+        "task_id": 0,
+        "path_id": "183670",
+        "message_size": 41.0
+      }
+    ]
+  },
+  {
+    "node_id": 53,
+    "task_id": 7,
+    "start_time": 91.00005425,
+    "end_time": 91.00006987500001,
+    "dependencies": [
+      {
+        "task_id": 0,
+        "path_id": "183670",
+        "message_size": 41.0
+      }
+    ]
+  },
+  {
+    "node_id": 53,
+    "task_id": 9,
+    "start_time": 182.000069875,
+    "end_time": 182.0000945625,
+    "dependencies": [
+      {
+        "task_id": 7,
+        "path_id": "183670",
+        "message_size": 41.0
+      },
+      {
+        "task_id": 5,
+        "path_id": "51342",
+        "message_size": 36.0
+      },
+      {
+        "task_id": 0,
+        "path_id": "183670",
+        "message_size": 41.0
+      }
+    ]
+  },
+  {
+    "node_id": 53,
+    "task_id": 4,
+    "start_time": 829.00005425,
+    "end_time": 829.0000903749999,
+    "dependencies": [
+      {
+        "task_id": 2,
+        "path_id": "183670",
+        "message_size": 41.0
+      }
+    ]
+  }
+]

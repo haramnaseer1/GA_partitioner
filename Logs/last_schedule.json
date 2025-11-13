@@ -1,0 +1,52 @@
+[
+  {
+    "node_id": 51,
+    "task_id": 1,
+    "start_time": 78.000000125,
+    "end_time": 378.000000125,
+    "node_makespan": 378.000000125,
+    "dependencies": [
+      {
+        "task_id": 0,
+        "path_id": "49711",
+        "message_size": 28.0
+      }
+    ]
+  },
+  {
+    "node_id": 52,
+    "task_id": 0,
+    "start_time": 0.0,
+    "end_time": 1.25e-07,
+    "node_makespan": 29.000018875,
+    "dependencies": []
+  },
+  {
+    "node_id": 52,
+    "task_id": 3,
+    "start_time": 107.000018875,
+    "end_time": 407.000018875,
+    "node_makespan": 407.000018875,
+    "dependencies": [
+      {
+        "task_id": 2,
+        "path_id": "51341",
+        "message_size": 28.0
+      }
+    ]
+  },
+  {
+    "node_id": 53,
+    "task_id": 2,
+    "start_time": 29.000000125,
+    "end_time": 29.000018875,
+    "node_makespan": 29.000018875,
+    "dependencies": [
+      {
+        "task_id": 0,
+        "path_id": "51342",
+        "message_size": 0.0
+      }
+    ]
+  }
+]

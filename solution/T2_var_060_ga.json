@@ -1,0 +1,291 @@
+[
+  {
+    "node_id": 51,
+    "task_id": 0,
+    "start_time": 0.0,
+    "end_time": 2.0466666666666667e-07,
+    "dependencies": []
+  },
+  {
+    "node_id": 51,
+    "task_id": 1,
+    "start_time": 0.0,
+    "end_time": 4.0266666666666667e-07,
+    "dependencies": []
+  },
+  {
+    "node_id": 51,
+    "task_id": 2,
+    "start_time": 0.0,
+    "end_time": 2.24e-07,
+    "dependencies": []
+  },
+  {
+    "node_id": 51,
+    "task_id": 7,
+    "start_time": 0.0,
+    "end_time": 3.726666666666667e-07,
+    "dependencies": []
+  },
+  {
+    "node_id": 51,
+    "task_id": 4,
+    "start_time": 104.00000040266667,
+    "end_time": 104.00000089333334,
+    "dependencies": [
+      {
+        "task_id": 2,
+        "path_id": "183650",
+        "message_size": 54.0
+      },
+      {
+        "task_id": 1,
+        "path_id": "183650",
+        "message_size": 54.0
+      }
+    ]
+  },
+  {
+    "node_id": 51,
+    "task_id": 17,
+    "start_time": 114.00002775,
+    "end_time": 114.00002823133333,
+    "dependencies": [
+      {
+        "task_id": 14,
+        "path_id": "183650",
+        "message_size": 54.0
+      },
+      {
+        "task_id": 10,
+        "path_id": "49724",
+        "message_size": 64.0
+      }
+    ]
+  },
+  {
+    "node_id": 51,
+    "task_id": 16,
+    "start_time": 213.00002570466665,
+    "end_time": 366.00002570466665,
+    "dependencies": [
+      {
+        "task_id": 3,
+        "path_id": "49724",
+        "message_size": 64.0
+      },
+      {
+        "task_id": 1,
+        "path_id": "183650",
+        "message_size": 54.0
+      },
+      {
+        "task_id": 10,
+        "path_id": "49724",
+        "message_size": 64.0
+      },
+      {
+        "task_id": 15,
+        "path_id": "49710",
+        "message_size": 61.0
+      }
+    ]
+  },
+  {
+    "node_id": 51,
+    "task_id": 8,
+    "start_time": 213.00003770466668,
+    "end_time": 213.00003802133335,
+    "dependencies": [
+      {
+        "task_id": 5,
+        "path_id": "49724",
+        "message_size": 64.0
+      }
+    ]
+  },
+  {
+    "node_id": 51,
+    "task_id": 11,
+    "start_time": 317.00003802133335,
+    "end_time": 317.00003853133336,
+    "dependencies": [
+      {
+        "task_id": 9,
+        "path_id": "49710",
+        "message_size": 61.0
+      },
+      {
+        "task_id": 8,
+        "path_id": "183650",
+        "message_size": 54.0
+      },
+      {
+        "task_id": 3,
+        "path_id": "49724",
+        "message_size": 64.0
+      }
+    ]
+  },
+  {
+    "node_id": 51,
+    "task_id": 14,
+    "start_time": 320.00000066666666,
+    "end_time": 320.0000008293333,
+    "dependencies": [
+      {
+        "task_id": 9,
+        "path_id": "49710",
+        "message_size": 61.0
+      },
+      {
+        "task_id": 13,
+        "path_id": "49710",
+        "message_size": 61.0
+      },
+      {
+        "task_id": 4,
+        "path_id": "183650",
+        "message_size": 54.0
+      },
+      {
+        "task_id": 3,
+        "path_id": "49724",
+        "message_size": 64.0
+      }
+    ]
+  },
+  {
+    "node_id": 52,
+    "task_id": 6,
+    "start_time": 98.00000040266667,
+    "end_time": 98.00000070183334,
+    "dependencies": [
+      {
+        "task_id": 1,
+        "path_id": "49711",
+        "message_size": 48.0
+      },
+      {
+        "task_id": 0,
+        "path_id": "49711",
+        "message_size": 48.0
+      }
+    ]
+  },
+  {
+    "node_id": 52,
+    "task_id": 15,
+    "start_time": 98.00000056533332,
+    "end_time": 98.00000065366666,
+    "dependencies": [
+      {
+        "task_id": 14,
+        "path_id": "49711",
+        "message_size": 48.0
+      },
+      {
+        "task_id": 1,
+        "path_id": "49711",
+        "message_size": 48.0
+      },
+      {
+        "task_id": 0,
+        "path_id": "49711",
+        "message_size": 48.0
+      }
+    ]
+  },
+  {
+    "node_id": 52,
+    "task_id": 13,
+    "start_time": 209.00000057458334,
+    "end_time": 209.00000066666666,
+    "dependencies": [
+      {
+        "task_id": 11,
+        "path_id": "49711",
+        "message_size": 48.0
+      }
+    ]
+  },
+  {
+    "node_id": 52,
+    "task_id": 9,
+    "start_time": 215.00003770466668,
+    "end_time": 215.00003776925,
+    "dependencies": [
+      {
+        "task_id": 5,
+        "path_id": "51341",
+        "message_size": 66.0
+      },
+      {
+        "task_id": 4,
+        "path_id": "49711",
+        "message_size": 48.0
+      },
+      {
+        "task_id": 2,
+        "path_id": "49711",
+        "message_size": 48.0
+      }
+    ]
+  },
+  {
+    "node_id": 53,
+    "task_id": 10,
+    "start_time": 0.0,
+    "end_time": 2.775e-05,
+    "dependencies": []
+  },
+  {
+    "node_id": 53,
+    "task_id": 5,
+    "start_time": 99.00000022399999,
+    "end_time": 99.000037724,
+    "dependencies": [
+      {
+        "task_id": 2,
+        "path_id": "49722",
+        "message_size": 49.0
+      },
+      {
+        "task_id": 0,
+        "path_id": "49722",
+        "message_size": 49.0
+      }
+    ]
+  },
+  {
+    "node_id": 53,
+    "task_id": 3,
+    "start_time": 99.00000040266667,
+    "end_time": 99.00002590266668,
+    "dependencies": [
+      {
+        "task_id": 1,
+        "path_id": "49722",
+        "message_size": 49.0
+      },
+      {
+        "task_id": 0,
+        "path_id": "49722",
+        "message_size": 49.0
+      }
+    ]
+  },
+  {
+    "node_id": 53,
+    "task_id": 12,
+    "start_time": 199.00003770466668,
+    "end_time": 199.0000799546667,
+    "dependencies": [
+      {
+        "task_id": 5,
+        "path_id": "183670",
+        "message_size": 50.0
+      }
+    ]
+  }
+]

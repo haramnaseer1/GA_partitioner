@@ -1,0 +1,122 @@
+[
+  {
+    "node_id": 51,
+    "task_id": 0,
+    "start_time": 0.0,
+    "end_time": 5.186666666666667e-07,
+    "dependencies": []
+  },
+  {
+    "node_id": 51,
+    "task_id": 5,
+    "start_time": 0.0,
+    "end_time": 2.8333333333333336e-07,
+    "dependencies": []
+  },
+  {
+    "node_id": 51,
+    "task_id": 3,
+    "start_time": 107.00000014625,
+    "end_time": 680.00000014625,
+    "dependencies": [
+      {
+        "task_id": 1,
+        "path_id": "49712",
+        "message_size": 57.0
+      }
+    ]
+  },
+  {
+    "node_id": 51,
+    "task_id": 8,
+    "start_time": 107.00000026125,
+    "end_time": 448.00000026124997,
+    "dependencies": [
+      {
+        "task_id": 2,
+        "path_id": "49712",
+        "message_size": 57.0
+      }
+    ]
+  },
+  {
+    "node_id": 52,
+    "task_id": 1,
+    "start_time": 0.0,
+    "end_time": 1.4625e-07,
+    "dependencies": []
+  },
+  {
+    "node_id": 52,
+    "task_id": 2,
+    "start_time": 0.0,
+    "end_time": 2.6125e-07,
+    "dependencies": []
+  },
+  {
+    "node_id": 52,
+    "task_id": 7,
+    "start_time": 0.0,
+    "end_time": 7.166666666666667e-08,
+    "dependencies": []
+  },
+  {
+    "node_id": 52,
+    "task_id": 9,
+    "start_time": 212.00000053666668,
+    "end_time": 756.0000005366667,
+    "dependencies": [
+      {
+        "task_id": 6,
+        "path_id": "183660",
+        "message_size": 49.0
+      }
+    ]
+  },
+  {
+    "node_id": 52,
+    "task_id": 6,
+    "start_time": 686.0,
+    "end_time": 686.0000002533334,
+    "dependencies": [
+      {
+        "task_id": 5,
+        "path_id": "49711",
+        "message_size": 63.0
+      },
+      {
+        "task_id": 2,
+        "path_id": "183660",
+        "message_size": 49.0
+      },
+      {
+        "task_id": 3,
+        "path_id": "49711",
+        "message_size": 63.0
+      }
+    ]
+  },
+  {
+    "node_id": 53,
+    "task_id": 4,
+    "start_time": 97.00000051866667,
+    "end_time": 97.00004483116666,
+    "dependencies": [
+      {
+        "task_id": 0,
+        "path_id": "49721",
+        "message_size": 47.0
+      },
+      {
+        "task_id": 2,
+        "path_id": "51340",
+        "message_size": 47.0
+      },
+      {
+        "task_id": 1,
+        "path_id": "51340",
+        "message_size": 47.0
+      }
+    ]
+  }
+]

@@ -1,0 +1,48 @@
+{
+  "feature_stats": {
+    "processing_time": {
+      "min": 1.0,
+      "max": 800.0,
+      "mean": 453.3966910350135,
+      "std": 204.56869860193345
+    },
+    "clock_speed": {
+      "min": 333.0,
+      "max": 333.0,
+      "mean": 333.0,
+      "std": 0.0
+    },
+    "start_time": {
+      "min": 0.0,
+      "max": 1402.0,
+      "mean": 348.5745509284643,
+      "std": 225.5331998882701
+    },
+    "end_time": {
+      "min": 1.6666666666666675e-09,
+      "max": 1488.0,
+      "mean": 353.79562986565816,
+      "std": 228.19838962440076
+    },
+    "message_size": {
+      "min": 0.0,
+      "max": 71.0,
+      "mean": 43.54814105823588,
+      "std": 14.819114703275712
+    }
+  },
+  "metadata": {
+    "num_samples": 107,
+    "num_resource_types": 6,
+    "num_tiers": 3,
+    "total_applications": 107,
+    "resource_type_mapping": {
+      "General purpose CPU": 1,
+      "FPGA": 2,
+      "Raspberry Pi 5": 3,
+      "Microcontroller": 4,
+      "High Performance CPU": 5,
+      "GPU": 6
+    }
+  }
+}

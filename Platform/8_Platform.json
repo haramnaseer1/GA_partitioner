@@ -1,0 +1,115 @@
+{
+  "platform": {
+    "nodes": [
+      {
+        "id": 81,
+        "is_router": false,
+        "type_of_processor": "General purpose CPU",
+        "clocking_speed": "1 GHz"
+      },
+      
+      {
+        "id": 82,
+        "is_router": false,
+        "type_of_processor": "Raspberry Pi 5",
+        "clocking_speed": "2.4 GHz"
+        
+      },
+      {
+        "id": 83,
+        "is_router": false,
+        "type_of_processor": "Microcontroller",
+        "clocking_speed": "16 MHz"
+        
+      },
+      {
+        "id": 84,
+        "is_router": false,
+        "type_of_processor": "FPGA",
+        "clocking_speed": "300 MHz"
+        
+      },
+      {
+        "id": 80001,
+        "is_router": true
+      },
+      {
+        "id": 80002,
+        "is_router": true
+      },
+      {
+        "id": 80003,
+        "is_router": true
+      },
+      {
+        "id": 80004,
+        "is_router": true
+      },
+      {
+        "id": 80,
+        "is_router": true,
+        "type_of_processor": "Edge_Gateway_8"
+      }
+    ],
+    "links": [
+      {
+        "start": 81,
+        "end": 80001
+      },
+      {
+        "start": 82,
+        "end": 80002
+      },
+      {
+        "start": 83,
+        "end": 80003
+      },
+      {
+        "start": 84,
+        "end": 80004
+      },
+      {
+        "start": 80001,
+        "end": 80002
+      },
+      {
+        "start": 80002,
+        "end": 80003
+      },
+      {
+        "start": 80002,
+        "end": 80004
+      },
+      {
+        "start": 80001,
+        "end": 80
+      },
+      {
+        "start": 80002,
+        "end": 80
+      },
+      {
+        "start": 80003,
+        "end": 80
+      },
+      {
+        "start": 80004,
+        "end": 80
+      }
+
+
+    ],
+    "frequencies": [
+      500,
+      1000
+    ],
+    "schemes": [
+      {
+        "id": 0,
+        "wcdt": 0,
+        "wcct": 0,
+        "wccr": 1
+      }
+    ]
+  }
+}

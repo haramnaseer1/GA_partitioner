@@ -1,0 +1,118 @@
+{
+  "platform": {
+    "nodes": [
+      {
+        "id": 31,
+        "is_router": false,
+        "type_of_processor": "General purpose CPU",
+        "clocking_speed": "1.5 GHz"
+        
+      },
+      {
+        "id": 32,
+        "is_router": false,
+        "type_of_processor": "FPGA",
+        "clocking_speed": "300 MHz"
+        
+      },
+      {
+        "id": 33,
+        "is_router": false,
+        "type_of_processor": "Raspberry Pi 5",
+        "clocking_speed": "2.4 GHz"
+        
+      },
+      {
+        "id": 34,
+        "is_router": false,
+        "type_of_processor": "Microcontroller",
+        "clocking_speed": "16 MHz"
+        
+      },
+      {
+        "id": 30001,
+        "is_router": true
+      },
+      {
+        "id": 30002,
+        "is_router": true
+      },
+      {
+        "id": 30003,
+        "is_router": true
+      },
+      {
+        "id": 30004,
+        "is_router": true
+      },
+      {
+        "id": 30,
+        "is_router": true,
+        "type_of_processor": "Edge_Gateway_3"
+      }
+    ],
+    "links": [
+      {
+        "start": 31,
+        "end": 30001
+      },
+      {
+        "start": 32,
+        "end": 30002
+      },
+      {
+        "start": 33,
+        "end": 30003
+      },
+      {
+        "start": 34,
+        "end": 30004
+      },
+      {
+        "start": 30001,
+        "end": 30002
+      },
+      {
+        "start": 30001,
+        "end": 30003
+      },
+      {
+        "start": 30002,
+        "end": 30004
+      },
+      {
+        "start": 30003,
+        "end": 30004
+      },
+      {
+        "start": 30001,
+        "end": 30
+      },
+      {
+        "start": 30002,
+        "end": 30
+      },
+      {
+        "start": 30003,
+        "end": 30
+      },
+      {
+        "start": 30004,
+        "end": 30
+      }
+
+    ],
+    "frequencies": [
+      500,
+      1000
+    ],
+    "schemes": [
+      {
+        "id": 0,
+        "wcdt": 0,
+        "wcct": 0,
+        "wccr": 1
+      }
+    ]
+  }
+}

@@ -1,0 +1,519 @@
+{
+    "application": {
+        "jobs": [
+            {
+                "id": 0,
+                "wcet_fullspeed": 263,
+                "mcet": 0,
+                "deadline": 2715,
+                "can_run_on": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6
+                ],
+                "processing_times": 210
+            },
+            {
+                "id": 1,
+                "wcet_fullspeed": 199,
+                "mcet": 0,
+                "deadline": 5071,
+                "can_run_on": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6
+                ],
+                "processing_times": 495
+            },
+            {
+                "id": 2,
+                "wcet_fullspeed": 211,
+                "mcet": 0,
+                "deadline": 5316,
+                "can_run_on": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6
+                ],
+                "processing_times": 453
+            },
+            {
+                "id": 3,
+                "wcet_fullspeed": 258,
+                "mcet": 0,
+                "deadline": 4197,
+                "can_run_on": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6
+                ],
+                "processing_times": 533
+            },
+            {
+                "id": 4,
+                "wcet_fullspeed": 269,
+                "mcet": 0,
+                "deadline": 4893,
+                "can_run_on": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6
+                ],
+                "processing_times": 560
+            },
+            {
+                "id": 5,
+                "wcet_fullspeed": 316,
+                "mcet": 0,
+                "deadline": 3124,
+                "can_run_on": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6
+                ],
+                "processing_times": 233
+            },
+            {
+                "id": 6,
+                "wcet_fullspeed": 320,
+                "mcet": 0,
+                "deadline": 6260,
+                "can_run_on": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6
+                ],
+                "processing_times": 456
+            },
+            {
+                "id": 7,
+                "wcet_fullspeed": 251,
+                "mcet": 0,
+                "deadline": 5125,
+                "can_run_on": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6
+                ],
+                "processing_times": 393
+            },
+            {
+                "id": 8,
+                "wcet_fullspeed": 258,
+                "mcet": 0,
+                "deadline": 2368,
+                "can_run_on": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6
+                ],
+                "processing_times": 354
+            },
+            {
+                "id": 9,
+                "wcet_fullspeed": 151,
+                "mcet": 0,
+                "deadline": 7587,
+                "can_run_on": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6
+                ],
+                "processing_times": 548
+            },
+            {
+                "id": 10,
+                "wcet_fullspeed": 286,
+                "mcet": 0,
+                "deadline": 2336,
+                "can_run_on": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6
+                ],
+                "processing_times": 341
+            },
+            {
+                "id": 11,
+                "wcet_fullspeed": 244,
+                "mcet": 0,
+                "deadline": 1752,
+                "can_run_on": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6
+                ],
+                "processing_times": 142
+            },
+            {
+                "id": 12,
+                "wcet_fullspeed": 217,
+                "mcet": 0,
+                "deadline": 1429,
+                "can_run_on": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6
+                ],
+                "processing_times": 129
+            },
+            {
+                "id": 13,
+                "wcet_fullspeed": 158,
+                "mcet": 0,
+                "deadline": 2738,
+                "can_run_on": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6
+                ],
+                "processing_times": 277
+            },
+            {
+                "id": 14,
+                "wcet_fullspeed": 166,
+                "mcet": 0,
+                "deadline": 5200,
+                "can_run_on": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6
+                ],
+                "processing_times": 404
+            }
+        ],
+        "messages": [
+            {
+                "id": 0,
+                "sender": 1,
+                "receiver": 12,
+                "size": 24,
+                "timetriggered": true,
+                "period": 30
+            },
+            {
+                "id": 1,
+                "sender": 3,
+                "receiver": 10,
+                "size": 35,
+                "timetriggered": true,
+                "period": 30
+            },
+            {
+                "id": 2,
+                "sender": 4,
+                "receiver": 8,
+                "size": 31,
+                "timetriggered": true,
+                "period": 20
+            },
+            {
+                "id": 3,
+                "sender": 2,
+                "receiver": 14,
+                "size": 45,
+                "timetriggered": false,
+                "period": 10
+            },
+            {
+                "id": 4,
+                "sender": 5,
+                "receiver": 12,
+                "size": 31,
+                "timetriggered": true,
+                "period": 30
+            },
+            {
+                "id": 5,
+                "sender": 1,
+                "receiver": 2,
+                "size": 63,
+                "timetriggered": true,
+                "period": 50
+            },
+            {
+                "id": 6,
+                "sender": 6,
+                "receiver": 7,
+                "size": 58,
+                "timetriggered": true,
+                "period": 20
+            },
+            {
+                "id": 7,
+                "sender": 12,
+                "receiver": 13,
+                "size": 18,
+                "timetriggered": true,
+                "period": 50
+            },
+            {
+                "id": 8,
+                "sender": 3,
+                "receiver": 12,
+                "size": 55,
+                "timetriggered": false,
+                "period": 10
+            },
+            {
+                "id": 9,
+                "sender": 7,
+                "receiver": 13,
+                "size": 16,
+                "timetriggered": true,
+                "period": 50
+            },
+            {
+                "id": 10,
+                "sender": 13,
+                "receiver": 14,
+                "size": 58,
+                "timetriggered": true,
+                "period": 20
+            },
+            {
+                "id": 11,
+                "sender": 2,
+                "receiver": 4,
+                "size": 47,
+                "timetriggered": true,
+                "period": 10
+            },
+            {
+                "id": 12,
+                "sender": 1,
+                "receiver": 14,
+                "size": 18,
+                "timetriggered": true,
+                "period": 30
+            },
+            {
+                "id": 13,
+                "sender": 2,
+                "receiver": 10,
+                "size": 54,
+                "timetriggered": true,
+                "period": 10
+            },
+            {
+                "id": 14,
+                "sender": 5,
+                "receiver": 8,
+                "size": 55,
+                "timetriggered": true,
+                "period": 30
+            },
+            {
+                "id": 15,
+                "sender": 2,
+                "receiver": 13,
+                "size": 49,
+                "timetriggered": true,
+                "period": 20
+            },
+            {
+                "id": 16,
+                "sender": 3,
+                "receiver": 14,
+                "size": 46,
+                "timetriggered": true,
+                "period": 50
+            },
+            {
+                "id": 17,
+                "sender": 0,
+                "receiver": 2,
+                "size": 22,
+                "timetriggered": true,
+                "period": 20
+            },
+            {
+                "id": 18,
+                "sender": 6,
+                "receiver": 12,
+                "size": 38,
+                "timetriggered": true,
+                "period": 10
+            },
+            {
+                "id": 19,
+                "sender": 2,
+                "receiver": 7,
+                "size": 30,
+                "timetriggered": true,
+                "period": 20
+            },
+            {
+                "id": 20,
+                "sender": 6,
+                "receiver": 14,
+                "size": 27,
+                "timetriggered": true,
+                "period": 20
+            }
+        ]
+    },
+    "platform": {
+        "nodes": [
+            {
+                "id": 0,
+                "is_router": true
+            },
+            {
+                "id": 1,
+                "is_router": false
+            },
+            {
+                "id": 2,
+                "is_router": false
+            },
+            {
+                "id": 3,
+                "is_router": true
+            },
+            {
+                "id": 4,
+                "is_router": false
+            },
+            {
+                "id": 5,
+                "is_router": false
+            },
+            {
+                "id": 6,
+                "is_router": true
+            },
+            {
+                "id": 7,
+                "is_router": false
+            },
+            {
+                "id": 8,
+                "is_router": false
+            },
+            {
+                "id": 9,
+                "is_router": true
+            },
+            {
+                "id": 10,
+                "is_router": false
+            },
+            {
+                "id": 11,
+                "is_router": false
+            }
+        ],
+        "links": [
+            {
+                "start": 0,
+                "end": 1
+            },
+            {
+                "start": 1,
+                "end": 2
+            },
+            {
+                "start": 1,
+                "end": 3
+            },
+            {
+                "start": 0,
+                "end": 4
+            },
+            {
+                "start": 4,
+                "end": 5
+            },
+            {
+                "start": 1,
+                "end": 6
+            },
+            {
+                "start": 4,
+                "end": 7
+            },
+            {
+                "start": 3,
+                "end": 8
+            },
+            {
+                "start": 4,
+                "end": 9
+            },
+            {
+                "start": 7,
+                "end": 10
+            },
+            {
+                "start": 3,
+                "end": 11
+            },
+            {
+                "start": 5,
+                "end": 9
+            },
+            {
+                "start": 3,
+                "end": 6
+            }
+        ],
+        "frequencies": [
+            500,
+            1000
+        ],
+        "schemes": [
+            {
+                "id": 0,
+                "wcdt": 0,
+                "wcct": 0,
+                "wccr": 1
+            }
+        ]
+    }
+}
