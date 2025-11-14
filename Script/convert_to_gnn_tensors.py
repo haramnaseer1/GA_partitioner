@@ -37,6 +37,21 @@ except ImportError:
     print("⚠️  Warning: torch-geometric not installed. Install with: pip install torch-geometric")
 
 
+def get_tier(node_id: int) -> int:
+    """
+    Classify platform node into tier based on ID range.
+    Returns: 0=Edge (11-99), 1=Fog (101-999), 2=Cloud (>=1001)
+    """
+    if 11 <= node_id <= 99:
+        return 0  # Edge
+    elif 101 <= node_id <= 999:
+        return 1  # Fog
+    elif node_id >= 1001:
+        return 2  # Cloud
+    else:
+        return 0  # Default to Edge
+
+
 class SchedulingGraphDataset:
     """
     Custom dataset for scheduling graphs.
@@ -164,7 +179,8 @@ class SchedulingGraphDataset:
         labels = []
         for task_id in range(num_jobs):
             node_id = task_to_node.get(task_id, 0)  # Default to 0 if missing
-            labels.append(node_id)
+            tier = get_tier(node_id)  # Convert node ID to tier label (0=Edge, 1=Fog, 2=Cloud)
+            labels.append(tier)
         
         y = torch.tensor(labels, dtype=torch.long)
         
