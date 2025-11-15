@@ -160,7 +160,22 @@ def main_file(client):
     # This is because computing the path for three -tier platform model is computationally expensive and time consuming. 
 
     # Find the last modified time of the platform model json file
-    current_modified_time = os.path.getmtime(cfg.path_info + "/3_Tier_Platform.json")
+    # Detect platform number from application filename
+    import re
+    match = re.match(r'[Tt](\d+)_', cfg.file_name)
+    if match:
+        platform_num = match.group(1)
+        platform_file = f"{platform_num}_Platform.json"
+    else:
+        platform_file = "3_Tier_Platform.json"
+    
+    # Check if path info file exists (only 3_Tier_Platform.json has path info)
+    path_info_file = cfg.path_info + f"/{platform_file}"
+    if os.path.exists(path_info_file):
+        current_modified_time = os.path.getmtime(path_info_file)
+    else:
+        # For platforms without path info, use a default timestamp
+        current_modified_time = 0
     # print("current_modified_time: ", current_modified_time)
 
     pt_graph, processor_list, pcocessor_found_only_edge, clk_speed_GHz = af.load_graph_from_json() # Reading the platform model
@@ -230,6 +245,15 @@ if __name__ == "__main__":
     
     # Initialize Dask client (local cluster setup)
     
+    # Handle command line arguments for application file
+    if len(sys.argv) >= 3:
+        app_file_arg = sys.argv[2]
+        # Extract just the filename from the path
+        if '/' in app_file_arg or '\\' in app_file_arg:
+            cfg.file_name = os.path.basename(app_file_arg)
+        else:
+            cfg.file_name = app_file_arg
+        print(f"Application model Selected: {cfg.file_name}")
 
     if cfg.cluster == "omni":
         # Start Dask on Omni cluster

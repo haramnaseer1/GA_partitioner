@@ -128,7 +128,7 @@ def main():
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(rows, f, indent=2, ensure_ascii=False)
 
-    print(f"[make-solution] ✅ Wrote {out_path}  (rows={len(rows)})")
+    print(f"[make-solution] Wrote {out_path}  (rows={len(rows)})")
 
 
 if __name__ == "__main__":

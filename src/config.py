@@ -11,7 +11,7 @@ import logging
 
 
 # ---------Setting the File Name (Application Model Name)  ---------
-file_name = 'T2_var_095.json'  # Change the file name to the desired application model name
+file_name = 'T2.json'  # Change the file name to the desired application model name
 
 
 
@@ -54,11 +54,11 @@ num_path = 5 # Number of paths that need to be generated
 last_known_time =    1740397401.2023108 # Last known time for the platform model modification - Desktop
 
 # Genetic Algorithm Constants
-POPULATION_SIZE_GGA = 4 if not DEBUG_MODE else 3  # Population Size for Global Genetic Algorithm
-POPULATION_SIZE_LGA = 2 if not DEBUG_MODE else 3  # Population Size for Local Genetic Algorithm
+POPULATION_SIZE_GGA = 20 if not DEBUG_MODE else 3  # Population Size for Global Genetic Algorithm
+POPULATION_SIZE_LGA = 10 if not DEBUG_MODE else 3  # Population Size for Local Genetic Algorithm
 
-NUMBER_OF_GENERATIONS_GCA = 4 if not DEBUG_MODE else 5  # Generations for Global Genetic Algorithm
-NUMBER_OF_GENERATIONS_LGA = 4 if not DEBUG_MODE else 5  # Generations for Local Genetic Algorithm
+NUMBER_OF_GENERATIONS_GCA = 100 if not DEBUG_MODE else 5  # Generations for Global Genetic Algorithm
+NUMBER_OF_GENERATIONS_LGA = 50 if not DEBUG_MODE else 5  # Generations for Local Genetic Algorithm
 
 MUTATION_PROBABILITY_GGA = 0.4
 MUTATION_PROBABILITY_LGA = 0.4
@@ -126,7 +126,9 @@ global_ga_logger = logging.getLogger("global_ga_logger")
 global_ga_logger.setLevel(logging.INFO)
 
 # Create and configure the file handler
-global_ga_handler = logging.FileHandler(os.path.join(log_dir_path, "global_ga.log"))  # Log file
+# Check for custom log file path from environment variable
+ga_log_file = os.environ.get('GA_LOG_FILE', os.path.join(log_dir_path, "global_ga.log"))
+global_ga_handler = logging.FileHandler(ga_log_file)  # Log file
 global_ga_formatter = logging.Formatter('%(asctime)s - %(message)s')  # Log format
 global_ga_handler.setFormatter(global_ga_formatter)  # Attach formatter to handler
 

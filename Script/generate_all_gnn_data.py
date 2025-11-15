@@ -126,13 +126,13 @@ def main():
         
         # Check if solution already exists
         if check_solution_exists(app_file, solution_dir):
-            log_message(log_file, f"⏭️  SKIPPED - Solution already exists for {app_file}")
+            log_message(log_file, f"SKIPPED - Solution already exists for {app_file}")
             stats['skipped'] += 1
             continue
         
         try:
             # Step 1: Update config.py
-            log_message(log_file, f"📝 Updating config.py with file_name = '{app_file}'")
+            log_message(log_file, f"Updating config.py with file_name = '{app_file}'")
             update_config(app_file, config_path)
             
             # Step 2: Run GA partitioning (main.py)

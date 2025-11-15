@@ -482,8 +482,17 @@ def load_graph_from_json():
                     # (the type of processor that is only found in edge layers)
     clocking_speed = {} # dict to store the clocking speed of the processors
 
-    pltfile = cfg.path_info + "/3_Tier_Platform.json" # Path to the complete platform model file 
-    #pltfile = cfg.platform_dir_path + "/1_Platform.json" # Path to the complete platform model file
+    # Detect platform number from application filename (e.g., T2_var_001 -> 2_Platform.json)
+    import re
+    app_name = cfg.file_name  # e.g., "T2_var_001.json"
+    match = re.match(r'[Tt](\d+)_', app_name)
+    if match:
+        platform_num = match.group(1)
+        pltfile = cfg.platform_dir_path + f"/{platform_num}_Platform.json"
+    else:
+        # Fallback for non-T* applications
+        pltfile = cfg.path_info + "/3_Tier_Platform.json"
+    
     with open(pltfile) as f:
         data = json.load(f)
 

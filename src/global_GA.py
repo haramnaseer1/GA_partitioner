@@ -318,59 +318,95 @@ def local_ga(application_model, platform_model,clocking_speed,rsc_mapping,Proces
 
         current_time_per_processor = {k:0 for k in processor_nodes_pltfm}  # Initialize the current time for each processor
 
-        completed_tasks = set()  # Set of completed tasks
-        ready_tasks = set(range(len(task_order)))  # Set of tasks ready to be processed- its is the index not actually the task , so it is a set of index of the task_order
+        # Create mapping from task_id to its index in task_order for proper lookups
+        task_id_to_index = {tid: idx for idx, tid in enumerate(task_order)}
+        
+        completed_task_ids = set()  # Set of completed task IDs (not indices)
+        pending_task_indices = list(range(len(task_order)))  # List of task indices to process in order
     
-        while ready_tasks:
-            task = ready_tasks.pop()
-
-            task_id = task_order[task]
-
-            processor = processor_allocation[task]
+        # Process tasks in the order specified by task_order, but skip if dependencies not met
+        # Keep looping until all tasks are scheduled
+        max_iterations = len(task_order) * len(task_order)  # Prevent infinite loops
+        iteration = 0
+        
+        while pending_task_indices and iteration < max_iterations:
+            iteration += 1
+            tasks_scheduled_this_round = False
             
+            # Try to schedule each pending task
+            for task_idx in list(pending_task_indices):
+                task_id = task_order[task_idx]
+                processor = processor_allocation[task_idx]
+                clk_speed = clocking_speed[processor]
+                predecessors = message_dict[task_id]
 
-            clk_speed = clocking_speed[processor]
-
-            predecessors = message_dict[task_id]
-
-            if all(p in completed_tasks for p, _, _, _, _ in predecessors):
-
-                if predecessors:
-
-                    # Calculate the latest time when all predecessor tasks are completed including message sizes
-                    latest_predecessor_completion = max(
-                        task_completion_times[sender] + size for sender, size, _, _, _ in predecessors
-                    )
-                    # print("latest_predecessor_completion",latest_predecessor_completion)
-                    # Compare it with the current processor time and take the maximum
-                    start_time = max(current_time_per_processor[processor], latest_predecessor_completion)
+                # Check if all predecessors IN THIS PARTITION are completed
+                # External predecessors (not in task_order) are assumed already complete
+                internal_predecessors = [p for p, _, _, _, _ in predecessors if p in task_id_to_index]
+                if all(p in completed_task_ids for p in internal_predecessors):
+                    # All dependencies satisfied - schedule this task
                     
-                else:
-                    # If there are no predecessors, start at the current processor time
+                    if predecessors:
+                        # Calculate the latest time when all predecessor tasks are completed including message sizes
+                        # FIX: Use task_id_to_index mapping to get correct completion times
+                        # NOTE: Only consider predecessors that are in this partition (in task_order)
+                        predecessor_times = []
+                        for sender, size, _, _, _ in predecessors:
+                            if sender in task_id_to_index:
+                                # Predecessor is in this partition - use its actual completion time
+                                predecessor_times.append(task_completion_times[task_id_to_index[sender]] + size)
+                            else:
+                                # Predecessor is in another partition - assume it's already done (external dependency)
+                                # Just account for the message transmission delay
+                                predecessor_times.append(size)
+                        
+                        latest_predecessor_completion = max(predecessor_times) if predecessor_times else 0
+                        
+                        # Compare it with the current processor time and take the maximum
+                        start_time = max(current_time_per_processor[processor], latest_predecessor_completion)
+                        
+                    else:
+                        # If there are no predecessors, start at the current processor time
+                        start_time = current_time_per_processor[processor]
+
+                    # Calculate the execution time
+                    execution_time = processing_time[task_id] / clk_speed
+                    end_time = start_time + execution_time
+
+                    # Record the path information used by the predecessors
+                    path_info = [(sender, path_id, message_id) for sender, _, _, path_id, message_id in predecessors]
+                    schedule[task_id] = (processor, start_time, end_time, path_info)
+                    
+                    # FIX: Store completion time using task index, not task_id
+                    task_completion_times[task_idx] = end_time
+
+                    # Update the current time of the processor to the end time of this task
+                    current_time_per_processor[processor] = end_time
+                    
+                    # FIX: Track completed task IDs for dependency checking
+                    completed_task_ids.add(task_id)
+                    
+                    # Remove from pending list
+                    pending_task_indices.remove(task_idx)
+                    tasks_scheduled_this_round = True
+            
+            # If no tasks were scheduled this round and we still have pending tasks, we have a problem
+            if not tasks_scheduled_this_round and pending_task_indices:
+                # This shouldn't happen with a valid DAG, but if it does, schedule remaining tasks anyway
+                for task_idx in pending_task_indices:
+                    task_id = task_order[task_idx]
+                    processor = processor_allocation[task_idx]
+                    clk_speed = clocking_speed[processor]
                     start_time = current_time_per_processor[processor]
-
-                # Calculate the total size of all messages from predecessors
-                total_message_size = sum(size for _, size, _, _, _ in predecessors)
-
-                # Calculate the end_time considering processing time and total message sizes
-
-
-                execution_time = processing_time[task_id]/ clk_speed
-
-                end_time = start_time  + execution_time #+ total_message_size
-
-                # Record the path information used by the predecessors
-                path_info = [(sender, path_id, message_id) for sender, _, _, path_id, message_id in predecessors]
-                schedule[task_id] = (processor, start_time, end_time, path_info)
-                # print("schedule",schedule)
-                task_completion_times[task_id] = end_time
-
-                # Update the current time of the processor to the end time of this task
-                current_time_per_processor[processor] = end_time
-                completed_tasks.add(task_id)
-                #print("completed_tasks", completed_tasks)
-            else:
-                ready_tasks.add(task)
+                    execution_time = processing_time[task_id] / clk_speed
+                    end_time = start_time + execution_time
+                    predecessors = message_dict[task_id]
+                    path_info = [(sender, path_id, message_id) for sender, _, _, path_id, message_id in predecessors]
+                    schedule[task_id] = (processor, start_time, end_time, path_info)
+                    task_completion_times[task_idx] = end_time
+                    current_time_per_processor[processor] = end_time
+                    completed_task_ids.add(task_id)
+                pending_task_indices = []
                 #print("ready_tasks", ready_tasks)
 
         
@@ -406,17 +442,18 @@ def local_ga(application_model, platform_model,clocking_speed,rsc_mapping,Proces
 
 
         # Iterate through can_run_on keys and their values
-        for task, processor_keys in can_run_on.items():
+        for task, processor_type_keys in can_run_on.items():
             # Initialize an empty list for processors that can run the task
             task_processor_mapping[task] = []
             
-            for processor_key in processor_keys:
-                # Get the processor type from rsc
-                processor_type = rsc.get(int(processor_key))
+            for processor_type_key in processor_type_keys:
+                # processor_type_key is the processor type ID (1-6)
+                # Get the processor type name from rsc mapping
+                processor_type_name = rsc.get(int(processor_type_key))
                 
-                # If the processor type exists in processor_map, add its IDs to the task
-                if processor_type in prcr_map:
-                    task_processor_mapping[task].extend(prcr_map[processor_type])
+                # If the processor type exists in prcr_map, add its actual processor IDs to the task
+                if processor_type_name in prcr_map:
+                    task_processor_mapping[task].extend(prcr_map[processor_type_name])
 
         return can_run_on,task_processor_mapping
 
@@ -427,32 +464,35 @@ def local_ga(application_model, platform_model,clocking_speed,rsc_mapping,Proces
         and update the sender values in the nested lists of each tuple by comparing the mappings.
 
         Args:
-            final_schedule (dict): The original schedule dictionary.
-            updated_task_id (dict): The mapping of old keys to new keys.
+            final_schedule (dict): The original schedule dictionary with new task IDs (0, 1, 2, ...)
+            updated_task_id (dict): The mapping of original task IDs to new task IDs {original: new}
 
         Returns:
-            dict: A new dictionary with updated keys and updated sender values in the tuples.
+            dict: A new dictionary with original task IDs restored
         """
+        # Create inverse mapping: new_id -> original_id
+        inverse_mapping = {new_id: orig_id for orig_id, new_id in updated_task_id.items()}
+        
         updated_schedule = {}
 
-        for old_key, value in final_schedule.items():
-            # Find the corresponding new key in updated_task_id
-            new_key = next((k for k, v in updated_task_id.items() if v == old_key), old_key)
+        for new_id_key, value in final_schedule.items():
+            # Convert new ID back to original ID
+            original_id = inverse_mapping.get(new_id_key, new_id_key)
             
             # Unpack the tuple value
-            sender, start_time, end_time, dependencies = value
+            processor, start_time, end_time, dependencies = value
             
-            # Update dependencies
+            # Update dependencies - convert sender IDs from new back to original
             updated_dependencies = [
-                (next((k for k, v in updated_task_id.items() if v == dep[0]), dep[0]), dep[1], dep[2])
+                (inverse_mapping.get(dep[0], dep[0]), dep[1], dep[2])
                 for dep in dependencies
             ]
             
             # Create updated value tuple
-            updated_value = (sender, start_time, end_time, updated_dependencies)
+            updated_value = (processor, start_time, end_time, updated_dependencies)
             
             # Update the schedule with the new key and updated value
-            updated_schedule[new_key] = updated_value
+            updated_schedule[original_id] = updated_value
 
         return updated_schedule
     
@@ -1019,7 +1059,8 @@ def global_ga_fitness_evaluation(AM,client,TaskNumInAppModel, partition_order, l
             k, tdict, mk = res
             results[k] = (tdict, mk)
         except Exception as e:
-            print("Task failed:", e)
+            print(f"Task failed: {e}")
+            # Continue processing other partitions even if one fails
     cfg.global_ga_logger.info("------------------------------------------------------------------------------------")
     print(f"All files processed. Results: {results}")
 
