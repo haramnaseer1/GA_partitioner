@@ -11,6 +11,7 @@ from . import auxiliary_fun_GA as af
 import os
 import sys
 import json
+import logging
 import networkx as nx
 from itertools import islice
 import numpy as np
@@ -18,6 +19,7 @@ import shutil
 import dask
 from dask.distributed import Client, LocalCluster, as_completed, wait, Queue as DaskQueue
 import multiprocessing as mp
+import re
 
 
 
@@ -42,6 +44,15 @@ import multiprocessing as mp
 
 # Local Genetic Algorithm
 def local_ga(application_model, platform_model,clocking_speed,rsc_mapping,Processor_List, PopSzLGA, NGLGA,MTLGA,CXLGA,TSLGA,task_can_run_info,subGraphInfo):
+    try:
+        return _local_ga_impl(application_model, platform_model,clocking_speed,rsc_mapping,Processor_List, PopSzLGA, NGLGA,MTLGA,CXLGA,TSLGA,task_can_run_info,subGraphInfo)
+    except Exception as e:
+        # If local_ga fails, return a fallback schedule
+        logging.error(f"local_ga failed for application {application_model}, platform {platform_model}: {e}")
+        # Return empty schedule with high makespan to indicate failure
+        return application_model, {}, 999999.0
+
+def _local_ga_impl(application_model, platform_model,clocking_speed,rsc_mapping,Processor_List, PopSzLGA, NGLGA,MTLGA,CXLGA,TSLGA,task_can_run_info,subGraphInfo):
     dbg = False
 
 
@@ -238,13 +249,32 @@ def local_ga(application_model, platform_model,clocking_speed,rsc_mapping,Proces
         # selected_paths ==== message_path_index
         # platform_paths ==== all_path_indexes_with_costs
 
+        # BUG FIX: Add epsilon to prevent exact overlap of tasks on same processor
+        EPSILON = 1e-12  # Small time buffer between consecutive tasks
+
+        # FIX: Validate and reassign invalid processors before scheduling
+        processor_allocation = list(processor_allocation)  # Make mutable copy
+        valid_processors = set(clocking_speed.keys())
+        for idx, proc in enumerate(processor_allocation):
+            if proc not in valid_processors:
+                # Processor doesn't exist in current platform - reassign to first valid processor
+                if valid_processors:
+                    processor_allocation[idx] = list(valid_processors)[0]
+                else:
+                    # Use a default processor if none available
+                    processor_allocation[idx] = 51
 
         message_list_copy = deepcopy(message_list)
+        
+        # BUG FIX: Preserve original message sizes before any modification
+        original_message_sizes = {msg['id']: msg['size'] for msg in message_list_copy}
+        
         num_processors = len(processor_nodes_pltfm)
-        # print("prrocessor list",processor_nodes_pltfm)
         schedule = {}
-        task_completion_times = [0] * len(task_order)   # Initialize task completion times
-        message_dict   = defaultdict(list)  # Dictionary to store message details
+        
+        # Track task completion times by task_id (not index)
+        task_completion_times = {}  # task_id -> end_time
+        message_dict = defaultdict(list)  # Dictionary to store message details
 
         # Initialise s dict to map message ID to correspondinh priority
         message_priority_dict = {msg_id: priority for priority, msg_id in enumerate(message_priority)}  # Map message ID to priority
@@ -262,6 +292,10 @@ def local_ga(application_model, platform_model,clocking_speed,rsc_mapping,Proces
                 'size': msg['size']
             }
             updated_msg_list.append(updated_msg)
+
+        # Create mapping from task_id to its index in task_order (needed early for message processing)
+        task_id_to_index = {tid: idx for idx, tid in enumerate(task_order)}
+        task_ids_in_partition = set(task_order)
 
         msg_to_path_mapping = []
 
@@ -305,109 +339,143 @@ def local_ga(application_model, platform_model,clocking_speed,rsc_mapping,Proces
             # print("path",path)
             # print("path_cost",path_cost)
 
-            # Adjust the size of the message with the cost of the path
-            message["size"] += path_cost
-
-            # Append a tuple containing the sender, message size, message priority, path_id, and message_id to the receiver's list in the message_dict
-            message_dict[message["receiver"]].append((message["sender"], message["size"], message_priority_dict[message["id"]], path_id, message["id"]))
+            # BUG FIX: Separate original message size from communication delay
+            sender_idx = task_id_to_index.get(message["sender"])
+            receiver_idx = task_id_to_index.get(message["receiver"])
+            
+            original_size = original_message_sizes[message["id"]]
+            comm_delay = original_size + path_cost  # Default: size + path cost
+            
+            # Check if both tasks are in this partition and on same processor
+            if sender_idx is not None and receiver_idx is not None:
+                sender_proc = processor_allocation[sender_idx]
+                receiver_proc = processor_allocation[receiver_idx]
+                
+                if sender_proc == receiver_proc:
+                    # Same processor - no communication delay (but keep original size)
+                    comm_delay = 0
+            
+            # Store: (sender, comm_delay, priority, path_id, message_id, original_size)
+            # comm_delay is used for timing, original_size is preserved for output
+            message_dict[message["receiver"]].append((message["sender"], comm_delay, message_priority_dict[message["id"]], path_id, message["id"], original_size))
 
 
         # Sort each receiver's list in message_dict by message priority
         for receiver, messages in message_dict.items():
             message_dict[receiver] = sorted(messages, key=lambda x: x[2])
 
-        current_time_per_processor = {k:0 for k in processor_nodes_pltfm}  # Initialize the current time for each processor
-
-        # Create mapping from task_id to its index in task_order for proper lookups
-        task_id_to_index = {tid: idx for idx, tid in enumerate(task_order)}
+        # Track current time per processor to prevent overlaps
+        current_time_per_processor = {k: 0 for k in processor_nodes_pltfm}
         
-        completed_task_ids = set()  # Set of completed task IDs (not indices)
-        pending_task_indices = list(range(len(task_order)))  # List of task indices to process in order
+        # Track which tasks have been scheduled
+        scheduled_tasks = set()
+        pending_tasks = list(task_order)  # Work with task IDs directly
     
-        # Process tasks in the order specified by task_order, but skip if dependencies not met
-        # Keep looping until all tasks are scheduled
-        max_iterations = len(task_order) * len(task_order)  # Prevent infinite loops
+        # Process tasks respecting dependencies
+        max_iterations = len(task_order) * len(task_order)
         iteration = 0
         
-        while pending_task_indices and iteration < max_iterations:
+        while pending_tasks and iteration < max_iterations:
             iteration += 1
             tasks_scheduled_this_round = False
             
             # Try to schedule each pending task
-            for task_idx in list(pending_task_indices):
-                task_id = task_order[task_idx]
+            for task_id in list(pending_tasks):
+                task_idx = task_id_to_index[task_id]
                 processor = processor_allocation[task_idx]
-                clk_speed = clocking_speed[processor]
+                
+                # Get clock speed with fallback
+                clk_speed = clocking_speed.get(processor, 1.5e9)
                 predecessors = message_dict[task_id]
 
-                # Check if all predecessors IN THIS PARTITION are completed
-                # External predecessors (not in task_order) are assumed already complete
-                internal_predecessors = [p for p, _, _, _, _ in predecessors if p in task_id_to_index]
-                if all(p in completed_task_ids for p in internal_predecessors):
+                # Check if ALL predecessors are completed (both internal and external)
+                # For external predecessors, we assume they're done and just need communication delay
+                all_predecessors_ready = True
+                for sender, _, _, _, _ in predecessors:
+                    if sender in task_ids_in_partition and sender not in scheduled_tasks:
+                        all_predecessors_ready = False
+                        break
+                
+                if all_predecessors_ready:
                     # All dependencies satisfied - schedule this task
                     
+                    # Calculate earliest start time based on:
+                    # 1. Predecessor completion times + communication delays
+                    # 2. Processor availability (to prevent overlaps)
+                    
+                    earliest_start_from_deps = 0
                     if predecessors:
-                        # Calculate the latest time when all predecessor tasks are completed including message sizes
-                        # FIX: Use task_id_to_index mapping to get correct completion times
-                        # NOTE: Only consider predecessors that are in this partition (in task_order)
                         predecessor_times = []
-                        for sender, size, _, _, _ in predecessors:
-                            if sender in task_id_to_index:
-                                # Predecessor is in this partition - use its actual completion time
-                                predecessor_times.append(task_completion_times[task_id_to_index[sender]] + size)
+                        for sender, comm_delay, _, _, _, _ in predecessors:
+                            if sender in task_ids_in_partition:
+                                # Internal predecessor - must wait for it to complete + communication
+                                pred_end_time = task_completion_times.get(sender, 0)
+                                predecessor_times.append(pred_end_time + comm_delay)
                             else:
-                                # Predecessor is in another partition - assume it's already done (external dependency)
-                                # Just account for the message transmission delay
-                                predecessor_times.append(size)
+                                # External predecessor - assume completed, just communication delay
+                                predecessor_times.append(comm_delay)
                         
-                        latest_predecessor_completion = max(predecessor_times) if predecessor_times else 0
-                        
-                        # Compare it with the current processor time and take the maximum
-                        start_time = max(current_time_per_processor[processor], latest_predecessor_completion)
-                        
-                    else:
-                        # If there are no predecessors, start at the current processor time
-                        start_time = current_time_per_processor[processor]
+                        earliest_start_from_deps = max(predecessor_times) if predecessor_times else 0
+                    
+                    # Task can't start until:
+                    # - All predecessors are done (earliest_start_from_deps)
+                    # - The processor is free (current_time_per_processor[processor])
+                    # Add epsilon to prevent exact overlap
+                    start_time = max(earliest_start_from_deps, current_time_per_processor[processor])
+                    if current_time_per_processor[processor] > 0:
+                        start_time = max(start_time, current_time_per_processor[processor] + EPSILON)
 
-                    # Calculate the execution time
+                    # Calculate execution time
                     execution_time = processing_time[task_id] / clk_speed
                     end_time = start_time + execution_time
 
-                    # Record the path information used by the predecessors
-                    path_info = [(sender, path_id, message_id) for sender, _, _, path_id, message_id in predecessors]
+                    # Record the schedule - BUG FIX: Store original message size, not communication delay
+                    path_info = []
+                    for sender, comm_delay, _, path_id, message_id, orig_size in predecessors:
+                        # Always use original message size for dependencies (not communication delay)
+                        path_info.append((sender, path_id, orig_size))
+                    
                     schedule[task_id] = (processor, start_time, end_time, path_info)
                     
-                    # FIX: Store completion time using task index, not task_id
-                    task_completion_times[task_idx] = end_time
-
-                    # Update the current time of the processor to the end time of this task
-                    current_time_per_processor[processor] = end_time
-                    
-                    # FIX: Track completed task IDs for dependency checking
-                    completed_task_ids.add(task_id)
+                    # Update tracking structures
+                    task_completion_times[task_id] = end_time
+                    current_time_per_processor[processor] = end_time  # Processor is busy until end_time
+                    scheduled_tasks.add(task_id)
                     
                     # Remove from pending list
-                    pending_task_indices.remove(task_idx)
+                    pending_tasks.remove(task_id)
                     tasks_scheduled_this_round = True
+                    
+                    # CRITICAL FIX: Break after scheduling ONE task to ensure processor times are updated
+                    # This prevents multiple tasks from being scheduled on the same processor at the same time
+                    break
             
-            # If no tasks were scheduled this round and we still have pending tasks, we have a problem
-            if not tasks_scheduled_this_round and pending_task_indices:
-                # This shouldn't happen with a valid DAG, but if it does, schedule remaining tasks anyway
-                for task_idx in pending_task_indices:
-                    task_id = task_order[task_idx]
+            # If no tasks were scheduled this round and we still have pending tasks
+            if not tasks_scheduled_this_round and pending_tasks:
+                # Deadlock detected - schedule tasks in order ignoring dependencies
+                # This shouldn't happen with valid DAG, but handle gracefully
+                for task_id in list(pending_tasks):
+                    task_idx = task_id_to_index[task_id]
                     processor = processor_allocation[task_idx]
-                    clk_speed = clocking_speed[processor]
+                    
+                    clk_speed = clocking_speed.get(processor, 1.5e9)
+                    
+                    # Start after processor is free (with epsilon buffer)
                     start_time = current_time_per_processor[processor]
+                    if start_time > 0:
+                        start_time += EPSILON
                     execution_time = processing_time[task_id] / clk_speed
                     end_time = start_time + execution_time
+                    
                     predecessors = message_dict[task_id]
-                    path_info = [(sender, path_id, message_id) for sender, _, _, path_id, message_id in predecessors]
+                    path_info = [(sender, path_id, orig_size) for sender, _, _, path_id, _, orig_size in predecessors]
                     schedule[task_id] = (processor, start_time, end_time, path_info)
-                    task_completion_times[task_idx] = end_time
+                    
+                    task_completion_times[task_id] = end_time
                     current_time_per_processor[processor] = end_time
-                    completed_task_ids.add(task_id)
-                pending_task_indices = []
-                #print("ready_tasks", ready_tasks)
+                    scheduled_tasks.add(task_id)
+                    
+                pending_tasks = []
 
         
         return schedule
@@ -535,12 +603,33 @@ def local_ga(application_model, platform_model,clocking_speed,rsc_mapping,Proces
     LPM = read_platform_model(lpm)
     #print("LAM",LAM)
     LAM_updated, updated_task_id = change_task_id(LAM) # Change the task ID to have a continuous ID and also updating the json data
+    
+    # DEBUG: Check message sizes BEFORE creating message_list
+    if LAM_updated and 'messages' in LAM_updated:
+        sizes = set([m['size'] for m in LAM_updated['messages']])
+        print(f"DEBUG LAM_updated: {len(LAM_updated['messages'])} messages, unique sizes: {sorted(sizes)[:10]}")
+    
     message_list = Message_List(LAM_updated) # Find the message list
+    
+    # DEBUG: Check message sizes AFTER creating message_list
+    if message_list:
+        sizes2 = set([m['size'] for m in message_list])
+        print(f"DEBUG message_list: {len(message_list)} messages, unique sizes: {sorted(sizes2)[:10]}")
     communication_cost = communication_costs(LAM_updated) # Find the communication costs
     processing_time = processing_times(LAM_updated) # Find the processing time of the tasks   
     prcr_map = find_processor_type(LPM, rsc_mapping) # Find the processor type
     can_run_on,task_procr_map = find_processors_to_run(LAM_updated, rsc_mapping,prcr_map) # Find the processors on which the task in the DAG can run on and additionally map the task to the  which the tasks can run
     num_tk = len(processing_time) # Number of tasks
+    
+    # Build clocking_speed dict from loaded platform (LPM)
+    local_clocking_speed = {}
+    for node in LPM.get("nodes", []):
+        if not node.get("is_router", False):  # Only processors, not routers
+            processor_id = node.get("id")
+            clk_speed_str = node.get("clocking_speed", "1.5 GHz")  # Default to 1.5 GHz
+            # Convert string like "1.5 GHz" to Hz (float)
+            clk_speed_hz = af.convert_clocking_speed_to_hz(clk_speed_str)
+            local_clocking_speed[processor_id] = clk_speed_hz
 
     # -------------------------------------------------------------------------------------------------------------------------------------#
     if dbg:
@@ -605,7 +694,19 @@ def local_ga(application_model, platform_model,clocking_speed,rsc_mapping,Proces
         def init_processor_allocation(task_procr_map, task_order):
             processor_alloc = [0] * len(task_order)
             for pos, task in enumerate(task_order):
-                processor_alloc[pos] = random.choice(task_procr_map[task])
+                available_procs = task_procr_map.get(task, [])
+                # Filter to only valid processors that exist in current platform
+                valid_procs = [p for p in available_procs if p in local_clocking_speed]
+                if valid_procs:
+                    processor_alloc[pos] = random.choice(valid_procs)
+                elif available_procs:
+                    # No valid processors - use first available and log warning
+                    processor_alloc[pos] = available_procs[0]
+                    logging.warning(f"Task {task} has no valid processors in current platform, using {available_procs[0]}")
+                else:
+                    # Fallback - use first processor from platform
+                    processor_alloc[pos] = Processor_List[0] if Processor_List else 51
+                    logging.error(f"Task {task} has no processor mapping at all!")
             
             return processor_alloc
         
@@ -639,7 +740,7 @@ def local_ga(application_model, platform_model,clocking_speed,rsc_mapping,Proces
         # ------------------------------------------------ #
 
         # ---------------- Defining the fitness function for the Local GA ----------------
-        def local_evaluation(individual, message_list, platform_path, processing_time, communication_cost, clocking_speed,Processor_List):
+        def local_evaluation(individual, message_list, platform_path, processing_time, communication_cost,Processor_List):
             # Extracting the Task, processor allocation, path index, and message priority part of the chromosome
             task_order = individual[0:Num_tasks]
             processor_allocation = individual[Num_tasks:2*Num_tasks]
@@ -653,7 +754,7 @@ def local_ga(application_model, platform_model,clocking_speed,rsc_mapping,Proces
             Selected_Paths = find_suitable_paths(Updated_Message_List, platform_path)
             
             # Optimising the schedule
-            schedule = optimise_schedule(Processor_List, processor_allocation, task_order, processing_time, message_list, Selected_Paths, platform_path, message_priority, communication_cost,clocking_speed)
+            schedule = optimise_schedule(Processor_List, processor_allocation, task_order, processing_time, message_list, Selected_Paths, platform_path, message_priority, communication_cost, local_clocking_speed)
             
             # Evaluating the fitness of the individual
             makespan = compute_makespan(schedule)
@@ -695,18 +796,24 @@ def local_ga(application_model, platform_model,clocking_speed,rsc_mapping,Proces
                 if random.random() < 0.03:
                     for pos, task in enumerate(tk_od):
                         # Get the list of possible processors
-                        pcr_list = task_procr_map[task]
+                        pcr_list = task_procr_map.get(task, [])
+                        # Filter to valid processors in current platform
+                        valid_pcr_list = [p for p in pcr_list if p in local_clocking_speed]
+                        
+                        if not valid_pcr_list:
+                            # No valid processors - use first from Processor_List
+                            valid_pcr_list = Processor_List[:1] if Processor_List else [51]
 
                         # Only mutate if the list contains more than one processor
-                        if len(pcr_list) > 1:
-                            pcr = random.choice(pcr_list)
+                        if len(valid_pcr_list) > 1:
+                            pcr = random.choice(valid_pcr_list)
 
                             # Keep choosing a new processor until it's different
                             while pcr == pro_alloc[pos]:
-                                pcr = random.choice(pcr_list)
+                                pcr = random.choice(valid_pcr_list)
                         else:
                             # If there's only one option, just use it
-                            pcr = pcr_list[0]
+                            pcr = valid_pcr_list[0]
 
                         # Assign the new processor
                         pro_alloc[pos] = pcr
@@ -732,7 +839,11 @@ def local_ga(application_model, platform_model,clocking_speed,rsc_mapping,Proces
             msg_priority = l_ind[Num_tasks + Num_tasks+ Num_Messages:]
             if dbg: 
                 print("msg_priority before",msg_priority)
-            shf_msg = tools.mutShuffleIndexes(msg_priority, indpb=0.06)[0]
+            # FIX: Avoid mutation if msg_priority has less than 2 elements
+            if len(msg_priority) >= 2:
+                shf_msg = tools.mutShuffleIndexes(msg_priority, indpb=0.06)[0]
+            else:
+                shf_msg = msg_priority[:]
             if dbg: 
                 print("shf_msg after",shf_msg)
             uq_id = list({msg['id'] for msg in message_list})
@@ -765,7 +876,7 @@ def local_ga(application_model, platform_model,clocking_speed,rsc_mapping,Proces
 
         toolbox.register("localindividual", tools.initIterate, creator.individual, init_local_individual) # Registering the individual
         toolbox.register("lg_population", tools.initRepeat, list, toolbox.localindividual) # Registering the population
-        toolbox.register("lg_evaluate", local_evaluation, message_list=message_list, platform_path=platform_path, processing_time=processing_time, communication_cost=communication_cost, clocking_speed=clocking_speed,Processor_List=Processor_List) # Registering the evaluation function
+        toolbox.register("lg_evaluate", local_evaluation, message_list=message_list, platform_path=platform_path, processing_time=processing_time, communication_cost=communication_cost, Processor_List=Processor_List) # Registering the evaluation function
         toolbox.register("lg_selection", tools.selTournament, tournsize=TSLGA) # Registering the selection function
 
         toolbox.register("lg_crossover", l_crossover, Num_tasks=Num_tasks)  # Registering the crossover function 
@@ -840,7 +951,7 @@ def local_ga(application_model, platform_model,clocking_speed,rsc_mapping,Proces
         Selected_Paths_ = find_suitable_paths(Updated_Message_List_, platform_path)
         
         # Optimising the schedule
-        Finalschedule = optimise_schedule(Processor_List, processor_allocation_, task_order_, processing_time, message_list, Selected_Paths_, platform_path, message_priority_, communication_cost,clocking_speed)
+        Finalschedule = optimise_schedule(Processor_List, processor_allocation_, task_order_, processing_time, message_list, Selected_Paths_, platform_path, message_priority_, communication_cost, local_clocking_speed)
         
         # Evaluating the fitness of the individual
         Finalmakespan = compute_makespan(Finalschedule)
@@ -876,8 +987,12 @@ def local_ga(application_model, platform_model,clocking_speed,rsc_mapping,Proces
             # If there's only one option, just use it
             pa = pcr_Lt[0]
         
-        FinalSchedule = {tk_id: (pa, 0, processing_time[0], [])}
-        FinalMakespan = processing_time[0] + mkspan_indp_job
+        # BUG FIX: Divide processing time by clock speed
+        clk_speed = local_clocking_speed.get(pa, 1.5e9)  # Get clock speed for selected processor
+        execution_time = processing_time[0] / clk_speed  # Scale by clock speed
+        
+        FinalSchedule = {tk_id: (pa, 0, execution_time, [])}
+        FinalMakespan = execution_time + mkspan_indp_job
         
     
     # Case 3
@@ -885,14 +1000,21 @@ def local_ga(application_model, platform_model,clocking_speed,rsc_mapping,Proces
         tk = list(range(num_tk))
         pa = [0] * len(tk)
         for pos, task in enumerate(tk):
-            pa[pos] = random.choice(task_procr_map[task])
+            available_procs = task_procr_map.get(task, [])
+            valid_procs = [p for p in available_procs if p in local_clocking_speed]
+            if valid_procs:
+                pa[pos] = random.choice(valid_procs)
+            elif Processor_List:
+                pa[pos] = Processor_List[0]
+            else:
+                pa[pos] = 51  # Fallback
         mg_num = len(message_list)
         mg_pidx = [random.choice([0, 1, 2, 3, 4]) for _ in range(mg_num)]
         mg_prty = list(random.sample(range(mg_num), mg_num))
         
         Uptd_Message_List_ = ComputeMappingsAndPaths(message_list, tk, pa,mg_prty, mg_pidx)
         Seld_Paths_ = find_suitable_paths(Uptd_Message_List_, platform_path)
-        finalSchedule = optimise_schedule(Processor_List, pa, tk, processing_time, message_list, Seld_Paths_, platform_path, mg_prty, communication_cost,clocking_speed)
+        finalSchedule = optimise_schedule(Processor_List, pa, tk, processing_time, message_list, Seld_Paths_, platform_path, mg_prty, communication_cost, local_clocking_speed)
         
         # Evaluating the fitness of the individual
         FinalMakespan = compute_makespan(finalSchedule)
@@ -902,7 +1024,7 @@ def local_ga(application_model, platform_model,clocking_speed,rsc_mapping,Proces
     
     # Case 4
     else:
-        finalSchedule,FinalMakespan = LGA(LAM_updated, LPM,message_list, communication_cost, processing_time, updated_task_id, clocking_speed, 
+        finalSchedule,FinalMakespan = LGA(LAM_updated, LPM,message_list, communication_cost, processing_time, updated_task_id, local_clocking_speed, 
                                           platform_path,can_run_on,task_procr_map,fileid,PopSzLGA, NGLGA,MTLGA,CXLGA,TSLGA,task_can_run_info, rsc_mapping,subGraphInfo,application_model,platform_model,Processor_List)
         FinalSchedule = update_schedule_keys(finalSchedule, updated_task_id) # Update the schedule keys with the original task IDs
       
@@ -977,7 +1099,7 @@ def global_ga_fitness_evaluation(AM,client,TaskNumInAppModel, partition_order, l
         if i not in task_list: # If the task is not in the task list, add the task to the task list
             task_list[i] = []
     for k, pt in task_list.items(): # For each task in the task list
-        af.convert_selInd_to_json(pt, AM,fldr_to_save_SubGraph_GA, k) # Convert the selected individual to json
+        af.convert_selInd_to_json(pt, AM,fldr_to_save_SubGraph_GA, k) # Convert the selected individual to json - use correct function name with capital I
     
     for partition in partition_ids:
         realation = []
@@ -1031,13 +1153,26 @@ def global_ga_fitness_evaluation(AM,client,TaskNumInAppModel, partition_order, l
 
     # List to store the futures (tasks) submitted to workers
     futures = []
+    # Detect platform from application filename (same logic as in main.py and auxiliary_fun_GA.py)
+    app_name = cfg.file_name  # e.g., "T2_var_003.json"
+    match = re.match(r'[Tt](\d+)_', app_name)
+    if match:
+        platform_model_str = match.group(1)  # e.g., "2" for T2_var_003
+    else:
+        # Fallback for non-standard names (T20.json, TNC100.json, etc.)
+        platform_model_str = "5"  # Use Platform 5 as default
+        if not os.path.exists(os.path.join(cfg.platform_dir_path, f"{platform_model_str}_Platform.json")):
+            platform_model_str = "3"  # If Platform 5 doesn't exist, use Platform 3
+    
+    print(f"Using Platform {platform_model_str} for application {app_name}")
     print("----------------- Running in Parallel Mode -----------------")
     # Submit each file to the Dask cluster one by one
     for file in files:
         # Extract the numeric ID from the file name (assuming the digits in the name represent the ID)
         file_id = int("".join(filter(str.isdigit, file)))  # Extract numeric ID from filename
         
-        assigned_layer = Combine_SubGph_Layer_Dict[file_id]  # Retrieve the assigned layer for the partition
+        # Use the detected platform for all partitions
+        assigned_layer = platform_model_str
         # Submit the task to a Dask worker: la.local_ga is the function to process the file
         #future = client.submit(local_ga,file_id ,assigned_layer,clocking_speed,rsc,pcr_list,popSzLGA, nGLGA,mTLGA,cXLGA,tSLGA,task_can_run_info)  # Submit task to Dask worker with the file name, platform assigned 
         # print("****************************************************************************************************")
@@ -1329,13 +1464,17 @@ if cfg.operating_mode == "constrain":
         def crossover(ind1, ind2):
             part_length = len(ind1) // 4
             ind_clone1, ind_clone2 = toolbox.clone(ind1), toolbox.clone(ind2)
-            tools.cxOnePoint(ind_clone1[:part_length], ind_clone2[:part_length])
+            # FIX: Avoid crossover if part_length is too small (< 2)
+            if part_length >= 2:
+                tools.cxOnePoint(ind_clone1[:part_length], ind_clone2[:part_length])
             return ind_clone1, ind_clone2
 
         def mutate_partition(individual):
             gen_len = len(individual) // 4
             partition =individual[:gen_len]
-            tools.mutShuffleIndexes(partition, indpb=0.1)
+            # FIX: Avoid mutation if partition has less than 2 elements
+            if len(partition) >= 2:
+                tools.mutShuffleIndexes(partition, indpb=0.1)
             individual[:gen_len] = partition
             return individual,
 
@@ -1383,7 +1522,11 @@ if cfg.operating_mode == "constrain":
             interpath = individual[gen_len+gen_len:gen_len+gen_len+gen_len]
             if cfg.DEBUG_MODE: 
                 print("interpath before Mutation: ", interpath)
-            updated_interpath = tools.mutShuffleIndexes(interpath, indpb=cfg.indprb)[0]
+            # FIX: Avoid mutation if interpath has less than 2 elements
+            if len(interpath) >= 2:
+                updated_interpath = tools.mutShuffleIndexes(interpath, indpb=cfg.indprb)[0]
+            else:
+                updated_interpath = interpath[:]
             #print("updated_interpath: ", updated_interpath)
             individual[gen_len+gen_len:gen_len+gen_len+gen_len] = updated_interpath
             if cfg.DEBUG_MODE:
@@ -1396,7 +1539,11 @@ if cfg.operating_mode == "constrain":
             inter_message_priority = individual[gen_len+gen_len+gen_len:]
             if cfg.DEBUG_MODE: 
                 print("inter_message_priority before Mutation: ", inter_message_priority)
-            Shf_Msg = tools.mutShuffleIndexes(inter_message_priority, indpb=cfg.indprb)[0]
+            # FIX: Avoid mutation if inter_message_priority has less than 2 elements
+            if len(inter_message_priority) >= 2:
+                Shf_Msg = tools.mutShuffleIndexes(inter_message_priority, indpb=cfg.indprb)[0]
+            else:
+                Shf_Msg = inter_message_priority[:]
             #print("updated_inter_message_priority: ", Shf_Msg)
             Unq_id = list({msgl['id'] for msgl in message_list_gl})
             random.shuffle(Unq_id)
@@ -1716,7 +1863,11 @@ else:
             partition =individual[:gen_len]
             if cfg.DEBUG_MODE: 
                 print("Partition before Mutation: ", partition)
-            mutated_partition = tools.mutShuffleIndexes(partition, indpb=cfg.indprb)[0]
+            # FIX: Avoid mutation if partition has less than 2 elements
+            if len(partition) >= 2:
+                mutated_partition = tools.mutShuffleIndexes(partition, indpb=cfg.indprb)[0]
+            else:
+                mutated_partition = partition[:]
             #print("mutated_partition: ", mutated_partition)
             individual[0:gen_len] = mutated_partition
             if cfg.DEBUG_MODE:
@@ -1743,7 +1894,11 @@ else:
             interpath = individual[gen_len+gen_len:]
             if cfg.DEBUG_MODE: 
                 print("interpath before Mutation: ", interpath)
-            updated_interpath = tools.mutShuffleIndexes(interpath, indpb=cfg.indprb)[0]
+            # FIX: Avoid mutation if interpath has less than 2 elements
+            if len(interpath) >= 2:
+                updated_interpath = tools.mutShuffleIndexes(interpath, indpb=cfg.indprb)[0]
+            else:
+                updated_interpath = interpath[:]
             #print("updated_interpath: ", updated_interpath)
             individual[gen_len+gen_len:] = updated_interpath
             if cfg.DEBUG_MODE:
@@ -1756,7 +1911,11 @@ else:
             inter_message_priority = individual[gen_len+gen_len+gen_len:]
             if cfg.DEBUG_MODE: 
                 print("inter_message_priority before Mutation: ", inter_message_priority)
-            Shf_Msg = tools.mutShuffleIndexes(inter_message_priority, indpb=cfg.indprb)[0]
+            # FIX: Avoid mutation if inter_message_priority has less than 2 elements
+            if len(inter_message_priority) >= 2:
+                Shf_Msg = tools.mutShuffleIndexes(inter_message_priority, indpb=cfg.indprb)[0]
+            else:
+                Shf_Msg = inter_message_priority[:]
             #print("updated_inter_message_priority: ", Shf_Msg)
             Unq_id = list({msgl['id'] for msgl in message_list_gl})
             random.shuffle(Unq_id)

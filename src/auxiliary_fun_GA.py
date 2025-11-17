@@ -482,16 +482,21 @@ def load_graph_from_json():
                     # (the type of processor that is only found in edge layers)
     clocking_speed = {} # dict to store the clocking speed of the processors
 
-    # Detect platform number from application filename (e.g., T2_var_001 -> 2_Platform.json)
+    # Detect platform number from application filename (e.g., T2_var_001 -> 2_Platform.json, T20 -> 20_Platform.json)
     import re
-    app_name = cfg.file_name  # e.g., "T2_var_001.json"
-    match = re.match(r'[Tt](\d+)_', app_name)
+    import os
+    app_name = cfg.file_name  # e.g., "T2_var_001.json" or "T20.json"
+    match = re.match(r'[Tt](\d+)_', app_name)  # Match T followed by digits and underscore (T2_var format)
     if match:
         platform_num = match.group(1)
         pltfile = cfg.platform_dir_path + f"/{platform_num}_Platform.json"
     else:
-        # Fallback for non-T* applications
-        pltfile = cfg.path_info + "/3_Tier_Platform.json"
+        # Fallback for non-standard names (T20.json, TNC100.json, etc.)
+        # Use Platform 5 as default (has diverse processor types)
+        pltfile = cfg.platform_dir_path + "/5_Platform.json"
+        if not os.path.exists(pltfile):
+            # If Platform 5 doesn't exist, try 3
+            pltfile = cfg.platform_dir_path + "/3_Platform.json"
     
     with open(pltfile) as f:
         data = json.load(f)
@@ -614,7 +619,16 @@ def generate_processor_paths(processor_nd_pltfm, G, k):
         path_id += 1
 
     PathDict = cfg.path_info + "/paths_file.json" 
-    MergedPath = cfg.path_info + "/Paths.json"
+    # FIX: Use platform-specific paths file to avoid overwriting when switching platforms
+    # Extract platform number from cfg.file_name (e.g., T2_var_001 -> 2, T20 -> 20)
+    import re
+    match = re.match(r'[Tt](\d+)', cfg.file_name)  # Match T followed by digits
+    if match:
+        platform_num = match.group(1)
+        MergedPath = cfg.path_info + f"/Paths_{platform_num}.json"
+    else:
+        MergedPath = cfg.path_info + "/Paths.json"
+        
     with open(PathDict, "w") as paths_out:
             json.dump(paths_dict, paths_out, indent=4)
 
@@ -797,9 +811,10 @@ def find_suitable_pathsGlobal(updated_message_list, merged_paths_dict):
         path_id = next(iter(valid_path_ids), '00')
         comm_cst = merged_paths_dict[path_id]['cost']
         # Add to the dictionary with sender as the key and [receiver, path_id] as the value
-        cost = comm_cst + size
+        # BUG FIX: Store actual message size, not cost (cost = comm_cst + size was adding delay to message_size)
+        # The cost should only be used for path selection logic, not stored in schedule
         
-        selected_path[idx] = [sender, receiver, path_id, cost]
+        selected_path[idx] = [sender, receiver, path_id, size]  # Store SIZE not COST
         
         idx = idx + 1
     return selected_path
@@ -838,7 +853,16 @@ def update_schedule_with_dependencies(data, task_pair, selected_paths,schdiff):
                     update_intra_partition(partition, dependent_task_id, new_start_time, new_end_time,schdiff)
 
     # Process task pairs and update their dependencies
+    # FIX: Track which task pairs have been processed to prevent phantom dependencies
+    # The issue: multiple task pairs might map to the same processor pair
+    processed_task_pairs = set()
+    
     for sender, receiver in task_pair:
+        # Skip if we've already processed this exact task pair
+        if (sender, receiver) in processed_task_pairs:
+            continue
+        processed_task_pairs.add((sender, receiver))
+        
         sender_partition, receiver_partition = None, None
         # Find partitions containing the sender and receiver tasks
         for partition, (tasks, _) in updated_data.items():
@@ -861,40 +885,58 @@ def update_schedule_with_dependencies(data, task_pair, selected_paths,schdiff):
 
         if sender_data and receiver_data:
             # Extract relevant information from Selected_Paths
-            for path_info in selected_paths.values():
+            # Find the FIRST path matching this task pair's processors
+            for path_key, path_info in selected_paths.items():
                 sender_proc, receiver_proc, path_id, message_size = path_info
                 
-                # Match sender and receiver processors
+                # Match processors for this task pair
                 if sender_data[0] == sender_proc and receiver_data[0] == receiver_proc:
                     # Update receiver task start and end time based on message transfer time
                     message_transfer_time = message_size  # Assuming message size represents transfer time
+                    
+                    # BUG FIX: Check if tasks are on the same node first
+                    if sender_proc == receiver_proc:
+                        # Same node - no communication delay, task can start immediately after predecessor
+                        inter_start_time = sender_data[2]
+                        # Set message_size to 0 for same-node communication
+                        actual_message_size = 0
                     # Edge to Edge
-                    if 11 <= sender_proc <= 99 and 11 <= receiver_proc <= 99: 
+                    elif 11 <= sender_proc <= 99 and 11 <= receiver_proc <= 99: 
                         inter_start_time = sender_data[2] + message_transfer_time + 50
+                        actual_message_size = message_size
                     # Edge to Fog or Fog to Edge
                     elif (11 <= sender_proc <= 99 and 101 <= receiver_proc <= 999) or (101 <= sender_proc <= 999 and 11 <= receiver_proc <= 99):
                         inter_start_time = sender_data[2] + message_transfer_time + 150
+                        actual_message_size = message_size
                     # Edge to Cloud or Cloud to Edge 
                     elif (11 <= sender_proc <= 99 and receiver_proc >= 1001) or (sender_proc >= 1001 and 11 <= receiver_proc <= 99):
                         inter_start_time = sender_data[2] + message_transfer_time + 350
+                        actual_message_size = message_size
                     # Cloud to Fog or Fog to Cloud
                     elif (101 <= sender_proc <= 999 and receiver_proc >= 1001) or (sender_proc >= 1001 and 101 <= receiver_proc < 999):
                         inter_start_time = sender_data[2] + message_transfer_time + 200
+                        actual_message_size = message_size
                     # Cloud to Cloud
                     elif sender_proc >= 1001 and receiver_proc >= 1001:
                         inter_start_time = sender_data[2] + message_transfer_time + 175
+                        actual_message_size = message_size
                     else:
-                        inter_start_time = sender_data[2] + message_transfer_time 
+                        inter_start_time = sender_data[2] + message_transfer_time
+                        actual_message_size = message_size
 
                      
                     receiver_start_time = max(receiver_data[1], inter_start_time)
                     receiver_end_time = receiver_start_time + (receiver_data[2] - receiver_data[1])
                     
                     updated_data[receiver_partition][0][receiver] = (
-                        receiver_data[0], receiver_start_time, receiver_end_time, receiver_data[3] + [(sender, path_id, message_size)]
+                        receiver_data[0], receiver_start_time, receiver_end_time, receiver_data[3] + [(sender, path_id, actual_message_size)]
                     )
                     # Recursively update intra-partition tasks
                     update_intra_partition(receiver_partition, receiver, receiver_start_time, receiver_end_time,schdiff)
+                    
+                    # Break after finding the first matching path for this task pair
+                    # This prevents using multiple paths for the same dependency
+                    break
 
     
 
@@ -905,6 +947,56 @@ def update_schedule_with_dependencies(data, task_pair, selected_paths,schdiff):
                 updated_data[partition][0][task_id] = (
                     task_data[0], 0, task_data[2] - task_data[1], task_data[3]
                 )
+
+    # FIX: Resolve processor conflicts - serialize tasks on the same processor across partitions
+    # Collect all tasks grouped by processor
+    tasks_by_processor = {}
+    for partition, (tasks, _) in updated_data.items():
+        for task_id, (processor, start_time, end_time, deps) in tasks.items():
+            if processor not in tasks_by_processor:
+                tasks_by_processor[processor] = []
+            tasks_by_processor[processor].append((partition, task_id, start_time, end_time, deps))
+    
+    # Check each processor for overlaps and serialize if needed
+    for processor, task_list in tasks_by_processor.items():
+        if len(task_list) <= 1:
+            continue  # No overlap possible with single task
+        
+        # Sort tasks by start time, then by task_id for deterministic ordering
+        sorted_tasks = sorted(task_list, key=lambda x: (x[2], x[1]))  # Sort by (start_time, task_id)
+        
+        # Detect and fix overlaps - multiple passes to handle chains
+        max_iterations = len(sorted_tasks) * 2  # Safety limit
+        iteration = 0
+        changes_made = True
+        
+        while changes_made and iteration < max_iterations:
+            changes_made = False
+            iteration += 1
+            
+            for i in range(len(sorted_tasks) - 1):
+                partition_i, task_id_i, start_i, end_i, deps_i = sorted_tasks[i]
+                partition_j, task_id_j, start_j, end_j, deps_j = sorted_tasks[i + 1]
+                
+                # Check for overlap: task i ends after task j starts
+                if end_i > start_j:
+                    # Overlap detected - push task j to start after task i ends
+                    duration_j = end_j - start_j
+                    new_start_j = end_i  # Start right after task i ends
+                    new_end_j = new_start_j + duration_j
+                    
+                    # Only update if this actually changes the schedule
+                    if new_start_j != start_j:
+                        # Update task j in the schedule
+                        updated_data[partition_j][0][task_id_j] = (processor, new_start_j, new_end_j, deps_j)
+                        
+                        # Update the sorted list for subsequent iterations
+                        sorted_tasks[i + 1] = (partition_j, task_id_j, new_start_j, new_end_j, deps_j)
+                        
+                        # Recursively update dependent tasks in the same partition
+                        update_intra_partition(partition_j, task_id_j, new_start_j, new_end_j, schdiff)
+                        
+                        changes_made = True
 
     return updated_data
 
@@ -932,8 +1024,12 @@ def update_schedule_times(data):
     max_times = {}
     
     for partition, (tasks, max_time) in data.items():
-        # Find the maximum end time among all tasks in the partition
-        max_end_time = max(task_data[2] for task_data in tasks.values())
+        # Handle empty schedules (failed partitions)
+        if not tasks:
+            max_end_time = 999999.0  # High penalty for failed schedule
+        else:
+            # Find the maximum end time among all tasks in the partition
+            max_end_time = max(task_data[2] for task_data in tasks.values())
         
         # Update the partition's max time in the original dictionary
         data[partition] = (tasks, max_end_time)
@@ -953,6 +1049,9 @@ def globalMakespan(data):
     Returns:
         tuple: A tuple containing the key with the maximum value and the maximum value itself.
     """
+    if not data:
+        # No partitions - return high penalty
+        return 999999.0
     max_partition = max(data, key=data.get)  # Key with the maximum value
     max_value = data[max_partition]         # Maximum value
     return max_value
