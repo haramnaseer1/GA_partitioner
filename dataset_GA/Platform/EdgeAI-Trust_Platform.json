@@ -1,0 +1,53 @@
+{
+  "platform": {
+    "nodes": [
+      {
+        "id": 51,
+        "is_router": false,
+        "type_of_processor": "FPGA",
+        "clocking_speed": "333 MHz"
+        
+      },
+      {
+        "id": 52,
+        "is_router": false,
+        "type_of_processor": "FPGA",
+        "clocking_speed": "333 MHz"
+        
+      },
+      {
+        "id": 53,
+        "is_router": false,
+        "type_of_processor": "FPGA",
+        "clocking_speed": "333 MHz"
+        
+      }
+    ],
+    "links": [
+      {
+        "start": 51,
+        "end": 52
+      },
+      {
+        "start": 51,
+        "end": 53
+      },
+      {
+        "start": 52,
+        "end": 53
+      }
+    ],
+    "frequencies": [
+      500,
+      1000
+    ],
+    "schemes": [
+      {
+        "id": 0,
+        "wcdt": 0,
+        "wcct": 0,
+        "wccr": 1
+      }
+    ]
+  }
+}

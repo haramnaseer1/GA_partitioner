@@ -28,8 +28,33 @@ from . import config as cfg
 #     return AM
 
 # Function to read the Platform Model from the JSON file 
+# Function to read the Platform Model from the JSON file 
 def read_platform_model():
-    with open(cfg.path_info + "/3_Tier_Platform.json") as pf:
+    # Detect platform number from application filename (e.g., T2_var_001 -> 2, T5_var_010 -> 5)
+    import re
+    import os
+    app_name = cfg.file_name  # e.g., "T2_var_001.json" or "T20.json"
+    match = re.match(r'[Tt](\d+)_', app_name)  # Match T#_var format only
+    if match:
+        platform_num = match.group(1)
+        platform_file = os.path.join(cfg.platform_dir_path, f"{platform_num}_Platform.json")
+    else:
+        # Fallback for non-standard names (T20.json, TNC100.json) - use Platform 5
+        platform_file = os.path.join(cfg.platform_dir_path, "5_Platform.json")
+        if not os.path.exists(platform_file):
+            platform_file = os.path.join(cfg.platform_dir_path, "3_Platform.json")
+    
+    # Add error handling with helpful message
+    if not os.path.exists(platform_file):
+        raise FileNotFoundError(
+            f"Platform file not found: {platform_file}\n"
+            f"  Application: {app_name}\n"
+            f"  Expected platform: {platform_num if match else '5 (fallback)'}\n"
+            f"  platform_dir_path: {cfg.platform_dir_path}\n"
+            f"  Current working directory: {os.getcwd()}"
+        )
+    
+    with open(platform_file) as pf:
         pltf_model = json.load(pf)
     PMl = pltf_model['platform']
     return PMl
@@ -160,7 +185,7 @@ def plot_list_schedule(final_schedule, processors, makespan):
     plt.legend(handles=legend_handles, title='Processor', loc='upper left', bbox_to_anchor=(1, 1))
     plt.ylim(-1, len(final_schedule))
     plt.grid(axis='y')
-    plt.show()
+    # plt.show()  # Commented out to prevent blocking during batch validation
 
 
 

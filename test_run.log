@@ -1,0 +1,35 @@
+C:\Users\hamza\AppData\Roaming\Python\Python312\site-packages\torch\optim\lr_scheduler.py:62: UserWarning: The verbose parameter is deprecated. Please use get_last_lr() to access the learning rate.
+  warnings.warn(
+
+Using device: cpu
+
+Loading data from training_data.pt...
+Loaded 535 graphs
+Split: 373 train, 81 val, 81 test
+
+Creating model...
+Model: SchedulingGNN
+Parameters: 1,158,020
+
+================================================================================
+Training Scheduling GNN on cpu
+================================================================================
+Model parameters: 1,158,020
+Training samples: 373
+Validation samples: 81
+Batch size: 16
+================================================================================
+
+Epoch   1/200 | Train: Loss=167434.6815 MAE=299.65 MAPE=83.05% | Val: Loss=137084.0687 MAE=250.30 MAPE=69.19% | LR=0.001000
+Traceback (most recent call last):
+  File "D:\Hira\Freelance\ARman\GA_Partitioner\train_model_main.py", line 434, in <module>
+    main()
+  File "D:\Hira\Freelance\ARman\GA_Partitioner\train_model_main.py", line 423, in main
+    history = trainer.train(
+              ^^^^^^^^^^^^^^
+  File "D:\Hira\Freelance\ARman\GA_Partitioner\train_model_main.py", line 215, in train
+    print(f"  \u2192 New best model! Val Loss: {val_loss:.4f}, MAE: {val_mae:.2f}")
+  File "C:\ProgramData\anaconda3\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2192' in position 2: character maps to <undefined>

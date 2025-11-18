@@ -115,7 +115,7 @@ def plot_graph(vertex_edge_pairs):
     plt.figure(figsize=(18, 15))
     if cfg.DEBUG_MODE:
         nx.draw(G, with_labels=True, node_size=500, node_color='lightblue', font_size=10, font_color='black', arrowsize=10)
-        plt.show()
+        # plt.show()  # Commented out to prevent blocking during batch validation
     return G
 
 # Function to find the ajacency matrix of the Application Model(Graph)

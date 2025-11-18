@@ -1,0 +1,640 @@
+{
+    "application": {
+        "jobs": [
+            {
+                "id": 0,
+                "wcet_fullspeed": 288,
+                "mcet": 0,
+                "deadline": 2959,
+                "can_run_on": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6
+                ],
+                "processing_times": 307
+            },
+            {
+                "id": 1,
+                "wcet_fullspeed": 188,
+                "mcet": 0,
+                "deadline": 5584,
+                "can_run_on": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6
+                ],
+                "processing_times": 604
+            },
+            {
+                "id": 2,
+                "wcet_fullspeed": 234,
+                "mcet": 0,
+                "deadline": 4574,
+                "can_run_on": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6
+                ],
+                "processing_times": 336
+            },
+            {
+                "id": 3,
+                "wcet_fullspeed": 350,
+                "mcet": 0,
+                "deadline": 2691,
+                "can_run_on": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6
+                ],
+                "processing_times": 408
+            },
+            {
+                "id": 4,
+                "wcet_fullspeed": 347,
+                "mcet": 0,
+                "deadline": 5924,
+                "can_run_on": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6
+                ],
+                "processing_times": 736
+            },
+            {
+                "id": 5,
+                "wcet_fullspeed": 204,
+                "mcet": 0,
+                "deadline": 7002,
+                "can_run_on": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6
+                ],
+                "processing_times": 600
+            },
+            {
+                "id": 6,
+                "wcet_fullspeed": 334,
+                "mcet": 0,
+                "deadline": 9378,
+                "can_run_on": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6
+                ],
+                "processing_times": 718
+            },
+            {
+                "id": 7,
+                "wcet_fullspeed": 373,
+                "mcet": 0,
+                "deadline": 4502,
+                "can_run_on": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6
+                ],
+                "processing_times": 559
+            },
+            {
+                "id": 8,
+                "wcet_fullspeed": 278,
+                "mcet": 0,
+                "deadline": 5667,
+                "can_run_on": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6
+                ],
+                "processing_times": 475
+            },
+            {
+                "id": 9,
+                "wcet_fullspeed": 204,
+                "mcet": 0,
+                "deadline": 1389,
+                "can_run_on": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6
+                ],
+                "processing_times": 155
+            },
+            {
+                "id": 10,
+                "wcet_fullspeed": 230,
+                "mcet": 0,
+                "deadline": 2779,
+                "can_run_on": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6
+                ],
+                "processing_times": 444
+            },
+            {
+                "id": 11,
+                "wcet_fullspeed": 289,
+                "mcet": 0,
+                "deadline": 9421,
+                "can_run_on": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6
+                ],
+                "processing_times": 765
+            },
+            {
+                "id": 12,
+                "wcet_fullspeed": 318,
+                "mcet": 0,
+                "deadline": 7946,
+                "can_run_on": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6
+                ],
+                "processing_times": 676
+            },
+            {
+                "id": 13,
+                "wcet_fullspeed": 177,
+                "mcet": 0,
+                "deadline": 3141,
+                "can_run_on": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6
+                ],
+                "processing_times": 221
+            },
+            {
+                "id": 14,
+                "wcet_fullspeed": 191,
+                "mcet": 0,
+                "deadline": 2947,
+                "can_run_on": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6
+                ],
+                "processing_times": 244
+            },
+            {
+                "id": 15,
+                "wcet_fullspeed": 178,
+                "mcet": 0,
+                "deadline": 2082,
+                "can_run_on": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6
+                ],
+                "processing_times": 212
+            },
+            {
+                "id": 16,
+                "wcet_fullspeed": 294,
+                "mcet": 0,
+                "deadline": 1306,
+                "can_run_on": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6
+                ],
+                "processing_times": 153
+            },
+            {
+                "id": 17,
+                "wcet_fullspeed": 350,
+                "mcet": 0,
+                "deadline": 7083,
+                "can_run_on": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6
+                ],
+                "processing_times": 722
+            }
+        ],
+        "messages": [
+            {
+                "id": 0,
+                "sender": 14,
+                "receiver": 17,
+                "size": 30,
+                "timetriggered": true,
+                "period": 20
+            },
+            {
+                "id": 1,
+                "sender": 14,
+                "receiver": 15,
+                "size": 37,
+                "timetriggered": true,
+                "period": 20
+            },
+            {
+                "id": 2,
+                "sender": 9,
+                "receiver": 14,
+                "size": 22,
+                "timetriggered": true,
+                "period": 10
+            },
+            {
+                "id": 3,
+                "sender": 13,
+                "receiver": 14,
+                "size": 16,
+                "timetriggered": false,
+                "period": 10
+            },
+            {
+                "id": 4,
+                "sender": 0,
+                "receiver": 3,
+                "size": 48,
+                "timetriggered": true,
+                "period": 20
+            },
+            {
+                "id": 5,
+                "sender": 2,
+                "receiver": 9,
+                "size": 32,
+                "timetriggered": false,
+                "period": 20
+            },
+            {
+                "id": 6,
+                "sender": 2,
+                "receiver": 5,
+                "size": 45,
+                "timetriggered": true,
+                "period": 50
+            },
+            {
+                "id": 7,
+                "sender": 9,
+                "receiver": 11,
+                "size": 35,
+                "timetriggered": true,
+                "period": 50
+            },
+            {
+                "id": 8,
+                "sender": 5,
+                "receiver": 8,
+                "size": 20,
+                "timetriggered": true,
+                "period": 10
+            },
+            {
+                "id": 9,
+                "sender": 1,
+                "receiver": 16,
+                "size": 50,
+                "timetriggered": true,
+                "period": 30
+            },
+            {
+                "id": 10,
+                "sender": 5,
+                "receiver": 9,
+                "size": 62,
+                "timetriggered": true,
+                "period": 10
+            },
+            {
+                "id": 11,
+                "sender": 5,
+                "receiver": 12,
+                "size": 49,
+                "timetriggered": true,
+                "period": 20
+            },
+            {
+                "id": 12,
+                "sender": 1,
+                "receiver": 3,
+                "size": 49,
+                "timetriggered": true,
+                "period": 30
+            },
+            {
+                "id": 13,
+                "sender": 10,
+                "receiver": 16,
+                "size": 25,
+                "timetriggered": true,
+                "period": 30
+            },
+            {
+                "id": 14,
+                "sender": 3,
+                "receiver": 14,
+                "size": 63,
+                "timetriggered": true,
+                "period": 20
+            },
+            {
+                "id": 15,
+                "sender": 0,
+                "receiver": 15,
+                "size": 24,
+                "timetriggered": true,
+                "period": 50
+            },
+            {
+                "id": 16,
+                "sender": 1,
+                "receiver": 6,
+                "size": 45,
+                "timetriggered": true,
+                "period": 20
+            },
+            {
+                "id": 17,
+                "sender": 3,
+                "receiver": 11,
+                "size": 38,
+                "timetriggered": true,
+                "period": 10
+            },
+            {
+                "id": 18,
+                "sender": 3,
+                "receiver": 16,
+                "size": 25,
+                "timetriggered": false,
+                "period": 20
+            },
+            {
+                "id": 19,
+                "sender": 0,
+                "receiver": 5,
+                "size": 44,
+                "timetriggered": true,
+                "period": 50
+            },
+            {
+                "id": 20,
+                "sender": 2,
+                "receiver": 4,
+                "size": 38,
+                "timetriggered": false,
+                "period": 20
+            },
+            {
+                "id": 21,
+                "sender": 8,
+                "receiver": 11,
+                "size": 62,
+                "timetriggered": true,
+                "period": 10
+            },
+            {
+                "id": 22,
+                "sender": 15,
+                "receiver": 16,
+                "size": 58,
+                "timetriggered": true,
+                "period": 30
+            },
+            {
+                "id": 23,
+                "sender": 4,
+                "receiver": 14,
+                "size": 29,
+                "timetriggered": true,
+                "period": 30
+            },
+            {
+                "id": 24,
+                "sender": 0,
+                "receiver": 6,
+                "size": 64,
+                "timetriggered": true,
+                "period": 50
+            },
+            {
+                "id": 25,
+                "sender": 4,
+                "receiver": 9,
+                "size": 27,
+                "timetriggered": true,
+                "period": 30
+            },
+            {
+                "id": 26,
+                "sender": 1,
+                "receiver": 4,
+                "size": 53,
+                "timetriggered": true,
+                "period": 10
+            },
+            {
+                "id": 27,
+                "sender": 10,
+                "receiver": 17,
+                "size": 58,
+                "timetriggered": true,
+                "period": 10
+            },
+            {
+                "id": 28,
+                "sender": 11,
+                "receiver": 13,
+                "size": 54,
+                "timetriggered": false,
+                "period": 30
+            },
+            {
+                "id": 29,
+                "sender": 1,
+                "receiver": 15,
+                "size": 44,
+                "timetriggered": true,
+                "period": 50
+            }
+        ]
+    },
+    "platform": {
+        "nodes": [
+            {
+                "id": 0,
+                "is_router": false
+            },
+            {
+                "id": 1,
+                "is_router": false
+            },
+            {
+                "id": 2,
+                "is_router": false
+            },
+            {
+                "id": 3,
+                "is_router": false
+            },
+            {
+                "id": 4,
+                "is_router": false
+            },
+            {
+                "id": 5,
+                "is_router": false
+            },
+            {
+                "id": 6,
+                "is_router": false
+            },
+            {
+                "id": 7,
+                "is_router": true
+            },
+            {
+                "id": 8,
+                "is_router": true
+            },
+            {
+                "id": 9,
+                "is_router": false
+            },
+            {
+                "id": 10,
+                "is_router": true
+            },
+            {
+                "id": 11,
+                "is_router": false
+            }
+        ],
+        "links": [
+            {
+                "start": 0,
+                "end": 1
+            },
+            {
+                "start": 0,
+                "end": 2
+            },
+            {
+                "start": 1,
+                "end": 3
+            },
+            {
+                "start": 1,
+                "end": 4
+            },
+            {
+                "start": 2,
+                "end": 5
+            },
+            {
+                "start": 0,
+                "end": 6
+            },
+            {
+                "start": 6,
+                "end": 7
+            },
+            {
+                "start": 4,
+                "end": 8
+            },
+            {
+                "start": 1,
+                "end": 9
+            },
+            {
+                "start": 4,
+                "end": 10
+            },
+            {
+                "start": 6,
+                "end": 11
+            },
+            {
+                "start": 10,
+                "end": 11
+            },
+            {
+                "start": 5,
+                "end": 7
+            },
+            {
+                "start": 7,
+                "end": 8
+            }
+        ],
+        "frequencies": [
+            500,
+            1000
+        ],
+        "schemes": [
+            {
+                "id": 0,
+                "wcdt": 0,
+                "wcct": 0,
+                "wccr": 1
+            }
+        ]
+    }
+}

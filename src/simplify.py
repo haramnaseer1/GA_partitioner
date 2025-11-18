@@ -86,6 +86,12 @@ def main():
         default="solution",
         help="Folder for the generated _ga.json file (default: solution)",
     )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=None,
+        help="Random seed number for unique filename (optional)",
+    )
     args = parser.parse_args()
 
     # Resolve paths
@@ -105,7 +111,12 @@ def main():
     if not ext:
         ext = ".json"
     os.makedirs(outdir, exist_ok=True)
-    out_path = os.path.join(outdir, f"{name}_ga{ext}")
+    
+    # Add seed suffix if provided
+    if args.seed is not None and args.seed > 0:
+        out_path = os.path.join(outdir, f"{name}_seed{args.seed:02d}_ga{ext}")
+    else:
+        out_path = os.path.join(outdir, f"{name}_ga{ext}")
 
     # Find last updated_schedule
     line = find_last_updated_schedule_line(log_path)

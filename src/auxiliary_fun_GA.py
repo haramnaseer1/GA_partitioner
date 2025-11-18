@@ -346,7 +346,9 @@ def extract_subgraph_info(all_sets_of_subgraphs,k):
                     
                     node_key_number = int(node_key[6:])  # Extract digits after 'nodes'
                     last_digit = int(str(node_key_number))  # Get the last digit(s)
-                    subgraph[subgraph_id][last_digit] = node_list
+                    # FIX: Only add partitions with at least one task to avoid empty subgraphs
+                    if node_list:  # Skip empty partitions
+                        subgraph[subgraph_id][last_digit] = node_list
     
     subgraphinfo = subgraph[k]
     return subgraph, subgraphinfo

@@ -1,0 +1,48 @@
+[
+  {
+    "node_id": 53,
+    "task_id": 1,
+    "start_time": 29.000001,
+    "end_time": 29.00001975,
+    "dependencies": [
+      {
+        "task_id": 0,
+        "path_id": "62",
+        "message_size": 0.0
+      }
+    ]
+  },
+  {
+    "node_id": 54,
+    "task_id": 0,
+    "start_time": 0.0,
+    "end_time": 1e-06,
+    "dependencies": []
+  },
+  {
+    "node_id": 54,
+    "task_id": 2,
+    "start_time": 25.000001,
+    "end_time": 25.000002000000002,
+    "dependencies": [
+      {
+        "task_id": 0,
+        "path_id": "100",
+        "message_size": 2.0
+      }
+    ]
+  },
+  {
+    "node_id": 54,
+    "task_id": 3,
+    "start_time": 50.000002,
+    "end_time": 50.000002333333335,
+    "dependencies": [
+      {
+        "task_id": 2,
+        "path_id": "100",
+        "message_size": 1.0
+      }
+    ]
+  }
+]

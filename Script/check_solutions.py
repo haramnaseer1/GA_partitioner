@@ -75,12 +75,12 @@ def find_platform_file(application_path: str = None, platform_dir: str = 'Platfo
     project_dir = os.path.dirname(script_dir)
     
     # Try to detect platform number from application path
-    platform_name = 'EdgeAI-Trust_Platform.json'  # default
+    platform_name = '5_Platform.json'  # default fallback
     if application_path:
         app_basename = os.path.basename(application_path)
-        # Extract number from T2_*, T20_*, etc.
+        # Extract number from T2_var_*, T5_var_*, etc. (must have underscore)
         import re
-        match = re.match(r'[Tt](\d+)_', app_basename)
+        match = re.match(r'[Tt](\d+)_', app_basename)  # Match T#_var format only
         if match:
             platform_num = match.group(1)
             platform_name = f'{platform_num}_Platform.json'
