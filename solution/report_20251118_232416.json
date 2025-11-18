@@ -1,0 +1,21 @@
+{
+    "timestamp": "2025-11-18T23:24:16.722995",
+    "config": {
+        "apps": 1,
+        "seeds": 1,
+        "timeout": 300
+    },
+    "summary": {
+        "valid": 0,
+        "invalid": 1,
+        "failed": 0,
+        "skipped": 0
+    },
+    "invalid_details": [
+        [
+            "T2_seed0",
+            "Invalid:\nSTDOUT:\n======================================================================\nVALIDATION RESULTS for solution/T2_ga.json\n======================================================================\nValid: NO\nMakespan: 9279.0000\n\nPrecedence Constraints: FAIL\n \ufffd- Precedence violation: Task 0 -> 1, Required start: 1024.0000, Actual start: 1000.0000. Required delay=24.0000, actual gap=0.0000\n\nNon-Overlap Constraints: PASS\n\nEligibility Constraints: FAIL\n \ufffd- Eligibility violation: Task 3 assigned to Node 53 (Microcontroller), but can only run on ['FPGA']\n\nTiming Consistency: PASS\n======================================================================\n\nSTDERR:\n"
+        ]
+    ],
+    "failed_details": []
+}

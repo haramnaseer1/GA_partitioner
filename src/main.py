@@ -197,12 +197,9 @@ def main_file(client):
 
     clocking_speed = {processor_id: af.convert_clocking_speed_to_hz(speed) for processor_id, speed in clk_speed_GHz.items()} # Finding the clock speed of the processors in the platform model in Hz
     
-    task_can_run_info = af.extract_task_info(AM)
-    # print("task_can_run_info: ", task_can_run_info)
-    # print("constrained task: ", constrained_task)   
-    # print("rsc_mapping: ", rsc_mapping)
-    # print("processor found on edge: ", pcocessor_found_only_edge)   
-
+    task_can_run_info = ga.task_can_run_on_which_processor(AM, client)
+    #print("task_can_run_info",task_can_run_info)
+    
     fixed_subgraph_map = af.fixed_subgraph_map2platform(constrained_task,task_can_run_info,rsc_mapping,pcocessor_found_only_edge)
     #print("fixed_subgraph_map: ", fixed_subgraph_map)
 
@@ -229,9 +226,8 @@ def main_file(client):
 
     #Assuming you're using the operating mode to select GA
     if cfg.operating_mode == "constrain":
-        ga.global_ga_constrained(AM, client,G, constrained_task_copy,selected_individual, subGraphInfo,list_schedule_makespan,adjacency_matrix, 
-                                 partition_dependencies, genome_length,clocking_speed,processor_list,rsc_mapping,message_list_gl,vertex_edge_pairs,
-                                 fixed_subgraph_map,task_can_run_info)
+        ga.global_ga_constrained(AM, client,G, constrained_task_copy,selected_individual, subGraphInfo,list_schedule_makespan,adjacency_matrix,
+                                 genome_length,clocking_speed,rsc_mapping, processor_list,message_list_gl,vertex_edge_pairs,graph, task_can_run_info, partition_dependencies)
     else:
         ga.global_ga(AM, client,graph, selected_individual, subGraphInfo,list_schedule_makespan,adjacency_matrix, partition_dependencies, genome_length,clocking_speed,processor_list,rsc_mapping,message_list_gl,vertex_edge_pairs)  # Running the Global GA in Unconstrained Mode
         # after ga.global_ga(...) or ga.global_ga_constrained(...)

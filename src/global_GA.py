@@ -398,26 +398,18 @@ def _local_ga_impl(application_model, platform_model,clocking_speed,rsc_mapping,
                     # 2. Processor availability (to prevent overlaps)
                     
                     earliest_start_from_deps = 0
-                    if predecessors:
-                        predecessor_times = []
-                        for sender, comm_delay, _, _, _, _ in predecessors:
-                            if sender in task_ids_in_partition:
-                                # Internal predecessor - must wait for it to complete + communication
-                                pred_end_time = task_completion_times.get(sender, 0)
-                                predecessor_times.append(pred_end_time + comm_delay)
-                            else:
-                                # External predecessor - assume completed, just communication delay
-                                predecessor_times.append(comm_delay)
-                        
-                        earliest_start_from_deps = max(predecessor_times) if predecessor_times else 0
+                    for sender_id, comm_delay, _, _, _, _ in predecessors:
+                        if sender_id in task_ids_in_partition:
+                            # It's an internal predecessor, so its finish time is in the schedule
+                            sender_finish_time = schedule[sender_id][2]
+                            earliest_start_from_deps = max(earliest_start_from_deps, sender_finish_time + comm_delay)
+                        else:
+                            # It's an external predecessor, assume it finishes at time 0
+                            # The start time is only dependent on the communication delay
+                            earliest_start_from_deps = max(earliest_start_from_deps, comm_delay)
                     
-                    # Task can't start until:
-                    # - All predecessors are done (earliest_start_from_deps)
-                    # - The processor is free (current_time_per_processor[processor])
-                    # Add epsilon to prevent exact overlap
-                    start_time = max(earliest_start_from_deps, current_time_per_processor[processor])
-                    if current_time_per_processor[processor] > 0:
-                        start_time = max(start_time, current_time_per_processor[processor] + EPSILON)
+                    # Calculate start time considering processor availability
+                    start_time = max(current_time_per_processor[processor], earliest_start_from_deps)
 
                     # Calculate execution time
                     # CRITICAL FIX: Scale WCET (processing_time) by the ratio of Reference Speed (1 GHz) to Node Clock Speed (Hz)
@@ -1062,7 +1054,7 @@ def _local_ga_impl(application_model, platform_model,clocking_speed,rsc_mapping,
 
 
 def global_ga_fitness_evaluation(AM,client,TaskNumInAppModel, partition_order, layer_order, inter_layer_path, subGraphInfo, selectedIndividual,partition_dependencies,genome_len,clocking_speed,rsc,pcr_list,inter_layer_message_priority,message_list_gl,
-                                 ertex_edge_pairs,graph,task_can_run_info
+                                 vertex_edge_pairs,graph,task_can_run_info
                                  ):
 
     # ----------------- Initialising the variables -----------------
@@ -1105,7 +1097,7 @@ def global_ga_fitness_evaluation(AM,client,TaskNumInAppModel, partition_order, l
     shutil.rmtree(fldr_to_save_SubGraph_GA, ignore_errors=True) # Removing the folder to save the subgraph for the GA algorithm
     os.makedirs(fldr_to_save_SubGraph_GA) # Creating the folder to save the subgraph for the GA algorithm
 
-    for i in range(1, genome_len+1):
+    for i in range(1, int(genome_len)+1):
         if i not in task_list: # If the task is not in the task list, add the task to the task list
             task_list[i] = []
     for k, pt in task_list.items(): # For each task in the task list
@@ -1275,8 +1267,8 @@ def global_ga_fitness_evaluation(AM,client,TaskNumInAppModel, partition_order, l
 if cfg.operating_mode == "constrain":
  
 
-    def global_ga_constrained(AM, client,graph, constrained_task ,selectedIndividual, subGraphInfo,list_schedule_makespan,adjacency_matrix, partition_dependencies, 
-                              genome_len,clocking_speed,processor_list,rsc_mapping,message_list_gl,vertex_edge_pairs,fixed_subgraph_map,task_can_run_info):
+    def global_ga_constrained(AM, client,G, constrained_task_copy,selected_individual, subGraphInfo,list_schedule_makespan,adjacency_matrix,
+                             genome_len,clocking_speed,rsc_mapping, processor_list,message_list_gl,vertex_edge_pairs,graph, task_can_run_info, partition_dependencies):
     
 
     
@@ -1314,7 +1306,7 @@ if cfg.operating_mode == "constrain":
 
         # ---------------- Defining the chromosome for the global GA ----------------
 
-        # The chromosome consits of two parts: partitioning and platform allocation
+        # The chromosome consits of the partitioning and platform allocation
         # The partitioning part consists of the partitioning of the application model 
         # The platform allocation part consists of the allocation of the partitions to the platforms (three tier architecture)
         # The chromosome is a list of lists
@@ -1330,10 +1322,10 @@ if cfg.operating_mode == "constrain":
             # ----- Defining the platform allocation part of the chromosome -----
 
         def init_platform_allocation(num_layers, constrained_task, Task_can_run_info, partition_order, subGraphInfo):
-            print("Partition Order: ", partition_order)
-            print("SubGraphInfo: ", subGraphInfo)
-            print("Constrained Task: ", constrained_task)
-            print("Fixed Subgraph Map: ", fixed_subgraph_map)
+            #print("Partition Order: ", partition_order)
+            #print("SubGraphInfo: ", subGraphInfo)
+            #print("Constrained Task: ", constrained_task)
+            #print("Fixed Subgraph Map: ", fixed_subgraph_map)
 
 
             # Initialize the layers list with zeros.
@@ -1429,7 +1421,7 @@ if cfg.operating_mode == "constrain":
         # --------------------------------------------------------------------------
         
         # ---------- Defining the evaluation function ------------
-        def global_evaluation(individual,subGraphInfo,selectedIndividual):
+        def global_evaluation(individual,subGraphInfo,selectedIndividual,genome_len):
             partition_length = len(individual) // 4
             layer_length = len(individual) // 4
             partition_order = individual[:partition_length]
@@ -1455,388 +1447,8 @@ if cfg.operating_mode == "constrain":
             
             
             if global_ga_fitness > list_schedule_makespan:
-                # print("SubGraphInfo: ", subGraphInfo)   
-                subGraphInfo_ = af.update_individual(adjacency_matrix,subGraphInfo,constrained_task,task_can_run_info)
-                # print("Updated SubGraphInfo: ", subGraphInfo_)
-                selectedIndividual = af.convert_partition_to_task_list(subGraphInfo_)
-                subGraphInfo = subGraphInfo_
-                # print("Updated Selected Individual: ", selectedIndividual)
-
-            return global_ga_fitness,
-        
-
-        # --------------------------------------------------------------------------
-
-        # ---------- Defining the mutation and crossover function ------------
-
-        def crossover(ind1, ind2):
-            part_length = len(ind1) // 4
-            ind_clone1, ind_clone2 = toolbox.clone(ind1), toolbox.clone(ind2)
-            # FIX: Avoid crossover if part_length is too small (< 2)
-            if part_length >= 2:
-                tools.cxOnePoint(ind_clone1[:part_length], ind_clone2[:part_length])
-            return ind_clone1, ind_clone2
-
-        def mutate_partition(individual):
-            gen_len = len(individual) // 4
-            partition =individual[:gen_len]
-            # FIX: Avoid mutation if partition has less than 2 elements
-            if len(partition) >= 2:
-                tools.mutShuffleIndexes(partition, indpb=0.1)
-            individual[:gen_len] = partition
-            return individual,
-
-        def mutate_layer(individual):
-            gen_len = len(individual) // 4
-            layer = individual[gen_len:gen_len+gen_len]
-            print("-------",num_platforms)
-            partition_order = individual[:gen_len]
-            layers = [0] * len(partition_order)
-            for pos,sub in enumerate (partition_order):
-                print("part ordr",partition_order)
-                if sub in subGraphInfo.keys():
-                    print("sub",sub)
-                    tks = subGraphInfo[sub]
-                    print("subg",subGraphInfo)
-                    print("tks",tks)
-                    if not tks:
-                        layers[pos]=(random.choice(range(1, num_platforms + 1)))
-                        print("lazer not task", layers)
-                    else:
-                        for tk in tks:
-                            if tk in constrained_task:
-                                layers[pos]=random.choice(range(1,10))
-                                print("newlayer 0 ", layers)    
-                                break
-                            else:
-                            # If the task is not in constrained_task, choose a random layer
-                                for x, can_run in task_can_run_info.items():
-                                    if any(val in [2] for val in can_run): 
-                                        new_layer = random.choice(range(1, num_platforms + 1))
-                                        print("newlayer 1 ", new_layer)
-                                # Ensure the new layer is different from the current one
-                                while new_layer == layer[pos]:
-                                    new_layer = random.choice(range(1, num_platforms + 1))
-                                    print("newlayer 2 ", new_layer)
-                                # Assign the new layer
-                                layers[pos] = new_layer
-                            break
-            individual[gen_len:gen_len+gen_len] = layers
-            return individual,
-    
-
-        def mutate_inter_layer_path(individual):
-            gen_len = len(individual) // 4
-            interpath = individual[gen_len+gen_len:gen_len+gen_len+gen_len]
-            if cfg.DEBUG_MODE: 
-                print("interpath before Mutation: ", interpath)
-            # FIX: Avoid mutation if interpath has less than 2 elements
-            if len(interpath) >= 2:
-                updated_interpath = tools.mutShuffleIndexes(interpath, indpb=cfg.indprb)[0]
-            else:
-                updated_interpath = interpath[:]
-            #print("updated_interpath: ", updated_interpath)
-            individual[gen_len+gen_len:gen_len+gen_len+gen_len] = updated_interpath
-            if cfg.DEBUG_MODE:
-                print("Mutate Inter Layer Path")
-                print("individual: ", individual)   
-            return individual,
-
-        def mutate_inter_layer_message_priority(individual):
-            gen_len = len(individual) // 4
-            inter_message_priority = individual[gen_len+gen_len+gen_len:]
-            if cfg.DEBUG_MODE: 
-                print("inter_message_priority before Mutation: ", inter_message_priority)
-            # FIX: Avoid mutation if inter_message_priority has less than 2 elements
-            if len(inter_message_priority) >= 2:
-                Shf_Msg = tools.mutShuffleIndexes(inter_message_priority, indpb=cfg.indprb)[0]
-            else:
-                Shf_Msg = inter_message_priority[:]
-            #print("updated_inter_message_priority: ", Shf_Msg)
-            Unq_id = list({msgl['id'] for msgl in message_list_gl})
-            random.shuffle(Unq_id)
-            Seen = set()
-            for i in range(len(Shf_Msg)):
-                if Shf_Msg[i] in Seen:
-                    for ud in Unq_id:
-                        if ud not in Seen:
-                            Shf_Msg[i] = ud
-                            Seen.add(ud)
-                            break
-                    Seen.add(Shf_Msg[i])
-                else:
-                    Seen.add(Shf_Msg[i])
-            
-            individual[gen_len+gen_len+gen_len:] = Shf_Msg
-            if cfg.DEBUG_MODE:
-                print("Mutate Inter Layer Message Priority")
-                print("individual: ", individual)   
-            return individual,
-
-
-        # --------------------------------------------------------------------------
-        
-        # ---------- Registering the functions with the toolbox ------------
-
-        toolbox.register("partitions", init_partitioning) # Registering the function to initialise the partitioning part of the chromosome
-        toolbox.register("platform_allocation", init_layer_wrapper, num_partitions=num_partitions, num_layers=num_platforms, constrained_task=constrained_task, Task_can_run_info=task_can_run_info, subGraphInfo=subGraphInfo) # Registering the function to initialise the platform allocation part of the chromosome 
-        toolbox.register("inter_layer_path_index", init_inter_layer_path_index, num_partitions =num_partitions) # Registering the function to initialise the inter layer path index part of the chromosome
-        toolbox.register("inter_layer_message_priority", init_inter_layer_message_priority, num_partitions =num_partitions) # Registering the function to initialise the inter layer message priority part of the chromosome
-    
-    
-        toolbox.register("gl_individual", tools.initIterate, creator.Individual, init_gl_individual) # Registering the function to initialise the global individual
-        toolbox.register("gl_population", tools.initRepeat, list, toolbox.gl_individual) # Registering the function to initialise the global population
-
-        toolbox.register("gl_evaluate", global_evaluation, subGraphInfo=subGraphInfo,selectedIndividual=selectedIndividual) # Registering the evaluation function
-        toolbox.register("select", tools.selTournament, tournsize=3) # Registering the selection function
-        
-        toolbox.register("mate", crossover) # Registering the crossover function
-        toolbox.register("mutate_partition", mutate_partition) # Registering the mutation function for the partitioning part of the chromosome
-        toolbox.register("mutate_layer", mutate_layer, ) # Registering the mutation function for the platform allocation part of the chromosome
-        toolbox.register("mutate_inter_layer_path", mutate_inter_layer_path) # Registering the mutation function for the inter layer path index part of the chromosome
-        toolbox.register("mutate_inter_layer_message_priority", mutate_inter_layer_message_priority) # Registering the mutation function for the inter layer message priority part of the chromosome
-        
-
-      
-
-        print("ind", init_gl_individual())
-        
-        # --------------------------------------------------------------------------
-
-        global_population = toolbox.gl_population(n=cfg.POPULATION_SIZE_GGA) # Initialising the global population
-
-        # ---------- Evaluating the fitness of the initial population ------------
-        global_fitnesses = map(toolbox.gl_evaluate, global_population) # Evaluating the fitness of the initial population
-        glft_initial = deepcopy(global_fitnesses)
-        global_fitnessesses = list(glft_initial)
-        for gind, gfit in zip(global_population, global_fitnesses):
-            gind.fitness.values = gfit    # Assigning the fitness values to the individuals
-
-        # --------------------------------------------------------------------------
-        # --------------------------------------------------------------------------
-        # Compute initial population fitness statistics
-        initial_max_fitness = max(fit[0] for fit in global_fitnessesses)  # Maximum fitness
-        initial_min_fitness = min(fit[0] for fit in global_fitnessesses)  # Minimum fitness
-        initial_avg_fitness = np.mean([fit[0] for fit in global_fitnessesses])  # Average fitness
-
-        print("Initial Population: Max Fitness: ", initial_max_fitness)
-        print("Initial Population: Min Fitness: ", initial_min_fitness)
-        print("Initial Population: Avg Fitness: ", initial_avg_fitness)
-        # Log the initial population fitness stats
-        cfg.global_ga_logger.info(f"Initial Population: Max Fitness: {initial_max_fitness:.3f}, Min Fitness: {initial_min_fitness:.3f}, Avg Fitness: {initial_avg_fitness:.3f}")
-
-
-
-
-
-
-
-        # ---------- Printings ---------------
-        if cfg.DEBUG_MODE:
-            print("num_partitions: ", num_partitions)
-            print("num_platforms: ", num_platforms)
-            po = init_partitioning()
-            print("Partition Order: ", po)
-            print("Platform Allocation: ", init_platform_allocation(num_platforms, constrained_task, fixed_subgraph_map, po, subGraphInfo))
-            print("global_population: ", global_population)
-        # --------------------------------------------------------------------------
-        else:
-            # print("Global Population", global_population)
-            # print("num_partitions: ", num_partitions)
-            # print("num_platforms: ", num_platforms)
-            # po = init_partitioning()
-            # print("Partition Order: ", po)
-            # print("Platform Allocation: ", init_platform_allocation(num_platforms, constrained_task, fixed_subgraph_map, po, subGraphInfo))
-            # print("global_population: ", global_population)
-            cx=0 # a random variable
-
-
-
-        # ---------- Running the global GA ------------
-        print("Running Global GA")
-        for gl_generation in range (1, cfg.NUMBER_OF_GENERATIONS_GCA+1):
-            print("Global Generation: ", gl_generation)
-            gloffspring = toolbox.select(global_population, len(global_population))   # Selecting the offspring
-            gloffspring = list(map(toolbox.clone, gloffspring))    # Cloning the offspring
-
-            # ---------- Crossover ------------
-            for glchild1, glchild2 in zip(gloffspring[::2], gloffspring[1::2]):
-                if random.random() < cfg.CROSSOVER_PROBABILITY_GGA:
-                    toolbox.mate(glchild1,glchild2)
-                    del glchild1.fitness.values
-                    del glchild2.fitness.values
-            
-            # ---------- Mutation ------------
-            for glmutant in gloffspring:
-                if random.random() < cfg.MUTATION_PROBABILITY_GGA:
-                    toolbox.mutate_partition(glmutant)
-                    toolbox.mutate_layer(glmutant)
-                    toolbox.mutate_inter_layer_path(glmutant)
-                    toolbox.mutate_inter_layer_message_priority(glmutant)
-                    del glmutant.fitness.values
-
-        
-            # ---------- Evaluating the fitness of the offspring ------------
-            # The individuals whose fitness values are not calculated are evaluated again
-
-            new_gl_individuals = [glind for glind in gloffspring if not glind.fitness.valid] # Getting the individuals whose fitness values are not calculated
-            global_fitnesses = map(toolbox.gl_evaluate, new_gl_individuals) # Evaluating the fitness of the individuals
-            for glind, gfit in zip(new_gl_individuals, global_fitnesses): # Assigning the fitness values to the individuals
-                glind.fitness.values = gfit
-            # --------------------------------------------------------------------------
-
-            # ---------- Replacing the population with the offspring ------------
-
-            best_indd_gl = tools.selBest(global_population, 1)[0] # Getting the best individual in the population
-            global_population[:] = gloffspring # Replacing the population with the offspring
-
-            # ---------- Updating the best individual and best fitness value ------------
-            best_glfitness_value.append(best_indd_gl.fitness.values[0]) # Updating the best fitness value
-            best_glindividual.append(best_indd_gl)
-            best_glindividual_dict[gl_generation] = best_indd_gl
-            best_glfitness_value_dict[gl_generation] = best_indd_gl.fitness.values[0]
-
-            # ---------- Additional statistics ------------
-            mean_fitness_per_gen.append(np.mean([gind.fitness.values[0] for gind in global_population])) # Mean fitness per generation
-            std_fitness_per_gen.append(np.std([gind.fitness.values[0] for gind in global_population])) # Standard deviation of fitness per generation
-
-            # ---------- Printings ---------------
-            if cfg.DEBUG_MODE:
-                print(f"Generation {gl_generation}: Mean Fitness: {mean_fitness_per_gen[-1]:.3f}, Std: {std_fitness_per_gen[-1]:.3f}")
-                print("Best Individual of Generation: ", best_glindividual_dict[gl_generation])
-                print("Fitness of Best Individual: ", best_glfitness_value_dict[gl_generation])
-            else:
-                cfg.global_ga_logger.info(f"Generation {gl_generation}: Mean Fitness: {mean_fitness_per_gen[-1]:.3f}, Std: {std_fitness_per_gen[-1]:.3f}")
-                #cfg.global_ga_logger.info(f"Best Individual of Generation: {best_glindividual_dict}")
-                cfg.global_ga_logger.info(f"Fitness of Best Individual: { best_glfitness_value_dict}")
-
-            # --------------------------------------------------------------------------
-        print("Global GA Completed")
-        return best_glindividual_dict, best_glfitness_value_dict, mean_fitness_per_gen, std_fitness_per_gen
-
-
-
-
-########################################################################################################
-else:
-
-    def global_ga(AM,client,graph,selectedIndividual, subGraphInfo,list_schedule_makespan,adjacency_matrix,partition_dependencies,
-                  genome_len,clocking_speed,processor_list,rsc_mapping,message_list_gl,vertex_edge_pairs):
-        print("Global GA Started")
-        toolbox = base.Toolbox()    # Creating a toolbox for the global GA
-        creator.create("FitnessMin", base.Fitness, weights=(-1.0,)) # Creating a fitness class for the global GA
-        creator.create("Individual", list, fitness=creator.FitnessMin) # Creating an individual class for the global GA
-
-        # --------- Defining variables to store values ------------
-
-        # Variables to store the best individual and best fitness value
-        best_glindividual = []
-        best_glfitness_value = []
-
-        # Dictionary to store the best individual and best fitness value in a generation 
-        best_glindividual_dict = {}
-        best_glfitness_value_dict = {}
-
-        # variables for storing additional statistics
-        mean_fitness_per_gen = []  # Mean fitness per generation
-        std_fitness_per_gen = []   # Standard deviation of fitness per generation
-
-    
-        # -----------------------------------------------------------
-
-        # initialising the global GA parameters
-        
-        num_partitions = max(selectedIndividual) # Number of partitions
-        num_platforms = cfg.num_layers # Number of platforms 
-        TaskNumInAppModel = len(AM['application']['jobs']) # Number of tasks in the application model
-        # -----------------------------------------------------------
-
-        # ---------------- Defining the chromosome for the global GA ----------------
-
-        # The chromosome consits of four parts: partitioning, platform allocation, inter layer path index, inter layer message priority
-        # The partitioning part consists of the partitioning of the application model 
-        # The platform allocation part consists of the allocation of the partitions to the platforms (three tier architecture)
-        # The inter layer path index part consists of the path index between the layers (the range of the index is 1 to 4)
-        # The inter layer message priority part consists of the priority of the messages between the layers
-        # The chromosome is a list of lists
-        # The first part of the chromosome is the partitioning part, the second part is the platform allocation part, the third part is the inter layer path index part and the fourth part is the inter layer message priority part     
-
-
-
-            # ----- Defining the partitioning part of the chromosome -----
-
-        def init_partitioning(num_partitions): 
-            # It creates a sequence of integers from 1 to num_partitions (inclusive) and shuffles them using random.sample to ensure no duplicates.
-            return random.sample(range(1, num_partitions + 1), num_partitions)
-
-            # ----- Defining the platform allocation part of the chromosome -----
-
-        def init_platform_allocation(num_platforms):
-            # Generates an array of random platform allocations for each partition.
-            # `[random.choice(range(1, num_platforms + 1)) for _ in range(num_partitions)]` creates an array of size `num_partitions`,
-            # with each element being randomly chosen from the range 1 to `num_platforms`.
-            return [random.choice(range(1, num_platforms + 1)) for _ in range(num_partitions)]
-
-        def init_inter_layer_path_index(num_partitions):
-            # Generates an array of random inter layer path indices for each partition.
-            # `[random.choice[] for _ in range(num_partitions)]` creates an array of size `num_partitions`,
-            # with each element being randomly chosen from the range 1 to 4.
-            return [random.choice([0, 1, 2, 3, 4]) for _ in range(num_partitions)]
-              
-        
-        # Defining the inter layer message priority part of the chromosome
-        def init_inter_layer_message_priority(num_partitions):
-            return random.sample(range(num_partitions), num_partitions)
-
-        # --------------------------------------------------------------------------
-
-        
-
-        # ---------- Defining the individual ------------
-
-        def init_gl_individual():
-            # Initialising the individual
-            global_individual = []
-            # Initialising the partitioning part of the chromosome
-            global_individual.extend(toolbox.partitions())
-            # Initialising the platform allocation part of the chromosome
-            global_individual.extend(toolbox.platform_allocation())
-            # Initialising the inter layer path index part of the chromosome
-            global_individual.extend(toolbox.inter_layer_path_index())
-            # Initialising the inter layer message priority part of the chromosome
-            global_individual.extend(toolbox.inter_layer_message_priority())
-            return global_individual
-
-
-        # --------------------------------------------------------------------------
-
-        # ---------- Defining the evaluation function ------------
-        def global_evaluation(individual,subGraphInfo,selectedIndividual):
-            partition_length = len(individual) // 4
-            layer_length = len(individual) // 4
-            partition_order = individual[:partition_length]
-            layer_order = individual[layer_length:layer_length+partition_length]
-            inter_layer_path = individual[partition_length+layer_length:partition_length+layer_length+partition_length]
-            inter_layer_message_priority = individual[partition_length+layer_length+partition_length:]
-
-            
-            # Finding the Mapping and the path of the inter layer communication
-
-
-            
-            # Calculate the fitness value of the individual.
-            # The fitness value is calculated based on the partition order and layer order. using the below function.
-            
-            # Variable to check if the fitness value is improved
-          
-            
-            global_ga_fitness = global_ga_fitness_evaluation(AM,client,TaskNumInAppModel,partition_order, layer_order, inter_layer_path, subGraphInfo, selectedIndividual,partition_dependencies,genome_len,clocking_speed,rsc_mapping, processor_list,inter_layer_message_priority,message_list_gl,vertex_edge_pairs,graph)    
-            
-            
-            
-            if global_ga_fitness > list_schedule_makespan:
                 #print("SubGraphInfo: ", subGraphInfo)   
-                subGraphInfo_ = af.update_individual(adjacency_matrix,subGraphInfo, [], {}) # Pass empty list and dict for non-constrained mode
+                subGraphInfo_ = af.update_individual(adjacency_matrix,subGraphInfo,constrained_task_copy,task_can_run_info)
                 #print("Updated SubGraphInfo: ", subGraphInfo_)
                 selectedIndividual = af.convert_partition_to_task_list(subGraphInfo_)
                 subGraphInfo = subGraphInfo_
@@ -1888,8 +1500,12 @@ else:
             layer = individual[gen_len:gen_len+gen_len]
             if cfg.DEBUG_MODE:
                 print("Layer before Mutation: ", layer)
-            indx = random.sample(range(gen_len), 2)
-            layer[indx[0]], layer[indx[1]] = layer[indx[1]], layer[indx[0]]
+            
+            # FIX: Check if we have enough elements to swap
+            if gen_len >= 2:
+                indx = random.sample(range(gen_len), 2)
+                layer[indx[0]], layer[indx[1]] = layer[indx[1]], layer[indx[0]]
+            
             #print("layer: ", layer)
             individual[gen_len:gen_len+gen_len] = layer
             if cfg.DEBUG_MODE:
@@ -1945,26 +1561,33 @@ else:
                 print("individual: ", individual)   
             return individual,
 
+
         # --------------------------------------------------------------------------
         
         # ---------- Registering the functions with the toolbox ------------
 
-        toolbox.register("partitions", init_partitioning, num_partitions= num_partitions) # Registering the function to initialise the partitioning part of the chromosome
-        toolbox.register("platform_allocation", init_platform_allocation ,num_platforms= num_platforms ) # Registering the function to initialise the platform allocation part of the chromosome 
+        toolbox.register("partitions", init_partitioning) # Registering the function to initialise the partitioning part of the chromosome
+        toolbox.register("platform_allocation", init_layer_wrapper, num_partitions=num_partitions, num_layers=num_platforms, constrained_task=constrained_task_copy, Task_can_run_info=task_can_run_info, subGraphInfo=subGraphInfo) # Registering the function to initialise the platform allocation part of the chromosome 
         toolbox.register("inter_layer_path_index", init_inter_layer_path_index, num_partitions =num_partitions) # Registering the function to initialise the inter layer path index part of the chromosome
         toolbox.register("inter_layer_message_priority", init_inter_layer_message_priority, num_partitions =num_partitions) # Registering the function to initialise the inter layer message priority part of the chromosome
+    
     
         toolbox.register("gl_individual", tools.initIterate, creator.Individual, init_gl_individual) # Registering the function to initialise the global individual
         toolbox.register("gl_population", tools.initRepeat, list, toolbox.gl_individual) # Registering the function to initialise the global population
 
-        toolbox.register("gl_evaluate", global_evaluation, subGraphInfo=subGraphInfo,selectedIndividual=selectedIndividual) # Registering the evaluation function
+        toolbox.register("gl_evaluate", global_evaluation, subGraphInfo=subGraphInfo,selectedIndividual=selected_individual,genome_len=genome_len) # Registering the evaluation function
         toolbox.register("select", tools.selTournament, tournsize=3) # Registering the selection function
         
         toolbox.register("mate", crossover) # Registering the crossover function
         toolbox.register("mutate_partition", mutate_partition) # Registering the mutation function for the partitioning part of the chromosome
-        toolbox.register("mutate_layer", mutate_layer) # Registering the mutation function for the platform allocation part of the chromosome
+        toolbox.register("mutate_layer", mutate_layer, ) # Registering the mutation function for the platform allocation part of the chromosome
         toolbox.register("mutate_inter_layer_path", mutate_inter_layer_path) # Registering the mutation function for the inter layer path index part of the chromosome
         toolbox.register("mutate_inter_layer_message_priority", mutate_inter_layer_message_priority) # Registering the mutation function for the inter layer message priority part of the chromosome
+        
+
+      
+
+        print("ind", init_gl_individual())
         
         # --------------------------------------------------------------------------
 
@@ -1972,24 +1595,48 @@ else:
 
         # ---------- Evaluating the fitness of the initial population ------------
         global_fitnesses = map(toolbox.gl_evaluate, global_population) # Evaluating the fitness of the initial population
+        glft_initial = deepcopy(global_fitnesses)
+        global_fitnessesses = list(glft_initial)
         for gind, gfit in zip(global_population, global_fitnesses):
             gind.fitness.values = gfit    # Assigning the fitness values to the individuals
 
         # --------------------------------------------------------------------------
-        
+        # --------------------------------------------------------------------------
+        # Compute initial population fitness statistics
+        initial_max_fitness = max(fit[0] for fit in global_fitnessesses)  # Maximum fitness
+        initial_min_fitness = min(fit[0] for fit in global_fitnessesses)  # Minimum fitness
+        initial_avg_fitness = np.mean([fit[0] for fit in global_fitnessesses])  # Average fitness
+
+        print("Initial Population: Max Fitness: ", initial_max_fitness)
+        print("Initial Population: Min Fitness: ", initial_min_fitness)
+        print("Initial Population: Avg Fitness: ", initial_avg_fitness)
+        # Log the initial population fitness stats
+        cfg.global_ga_logger.info(f"Initial Population: Max Fitness: {initial_max_fitness:.3f}, Min Fitness: {initial_min_fitness:.3f}, Avg Fitness: {initial_avg_fitness:.3f}")
+
+
+
+
+
+
+
         # ---------- Printings ---------------
         if cfg.DEBUG_MODE:
             print("num_partitions: ", num_partitions)
             print("num_platforms: ", num_platforms)
-            po = init_partitioning(num_partitions)
+            po = init_partitioning()
             print("Partition Order: ", po)
-            print("Platform Allocation: ", init_platform_allocation(num_platforms))
+            # print("Platform Allocation: ", init_platform_allocation(num_platforms, constrained_task, fixed_subgraph_map, po, subGraphInfo))
             print("global_population: ", global_population)
         # --------------------------------------------------------------------------
         else:
-            pp = 0
-            #print("Global Population", global_population)
-            
+            # print("Global Population", global_population)
+            # print("num_partitions: ", num_partitions)
+            # print("num_platforms: ", num_platforms)
+            # po = init_partitioning()
+            # print("Partition Order: ", po)
+            # print("Platform Allocation: ", init_platform_allocation(num_platforms, constrained_task, fixed_subgraph_map, po, subGraphInfo))
+            # print("global_population: ", global_population)
+            cx=0 # a random variable
 
 
 
@@ -2065,3 +1712,26 @@ else:
 # --------------------------------------------------------------------------
 # Auxiliary functions
 # --------------------------------------------------------------------------
+
+# =====================================================================
+# TIER MAPPING AND LATENCY CONSTANTS (FROM Guide.pdf §10.7)
+# =====================================================================
+
+def task_can_run_on_which_processor(application_data, platform_data):
+    """
+    Determines which processors each task can run on based on eligibility.
+    """
+    task_can_run_info = {}
+    # FIX: Access the 'tasks' list directly from the application data root
+    for task in application_data.get('tasks', []):
+        task_id = task['id']
+        eligible_processors = []
+        for processor in platform_data['platform']['processors']:
+            if processor['type'] in task['eligible_p_types']:
+                eligible_processors.append(processor['id'])
+        task_can_run_info[task_id] = eligible_processors
+    return task_can_run_info
+
+# =====================================================================
+#                        SCHEDULING LOGIC
+# =====================================================================

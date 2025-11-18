@@ -207,8 +207,10 @@ class MultiTaskTrainer:
                     metrics[key] += losses[key].item() if key != 'processor_acc' else losses[key].item()
                 num_batches += 1
         
-        for key in metrics:
-            metrics[key] /= num_batches
+        # Avoid division by zero if no batches
+        if num_batches > 0:
+            for key in metrics:
+                metrics[key] /= num_batches
         
         return metrics
     

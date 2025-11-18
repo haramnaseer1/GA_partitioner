@@ -59,8 +59,8 @@ POPULATION_SIZE_LGA = 10 if not DEBUG_MODE else 3  # Population Size for Local G
 
 # For GNN training data: balanced iterations (complete solutions, reasonable time)
 # TEMPORARY: Reduced for quick testing (1 hour time limit) - restore to 50/30 for production
-NUMBER_OF_GENERATIONS_GCA = 10
-NUMBER_OF_GENERATIONS_LGA = 10
+NUMBER_OF_GENERATIONS_GCA = 2
+NUMBER_OF_GENERATIONS_LGA = 2
 
 MUTATION_PROBABILITY_GGA = 0.4
 MUTATION_PROBABILITY_LGA = 0.4

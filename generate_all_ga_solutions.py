@@ -17,7 +17,7 @@ def run_ga_for_application(app_path, seed=0, timeout=300):
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, encoding='utf-8', errors='replace')
         
         if result.returncode != 0:
-            return False, f"GA failed: {result.stderr[-200:]}"
+            return False, f"GA failed: {result.stderr}"
         
         # Call simplify.py to extract solution from log
         simplify_cmd = [sys.executable, 'src/simplify.py', '--input', app_path, '--seed', str(seed)]
@@ -44,24 +44,25 @@ def run_ga_for_application(app_path, seed=0, timeout=300):
         if 'Valid: YES' in val_result.stdout or 'valid=True' in val_result.stdout or 'Valid: True' in val_result.stdout:
             return True, "Valid"
         else:
-            # Extract validation errors
-            lines = val_result.stdout.split('\n')
-            errors = [line.strip() for line in lines if 'False' in line or 'violation' in line.lower() or 'FAIL' in line]
-            error_summary = ' '.join(errors[:2]) if errors else "Unknown validation error"
-            return False, f"Invalid: {error_summary}"
+            # Return the full output for detailed debugging
+            error_details = f"STDOUT:\n{val_result.stdout}\nSTDERR:\n{val_result.stderr}"
+            return False, f"Invalid:\n{error_details}"
             
     except subprocess.TimeoutExpired:
         return False, f"Timeout ({timeout}s)"
     except Exception as e:
         return False, f"Error: {str(e)[:100]}"
 
-def generate_all_solutions(app_dir='Application', timeout=300, skip_existing=True, num_seeds=1):
+def generate_all_solutions(app_dir='Application', timeout=300, skip_existing=True, num_seeds=1, limit=None):
     """
     Generate GA solutions for all applications with multiple seeds.
     A num_seeds value of 1 will run with seed 0.
     """
     
     app_files = sorted(glob.glob(f'{app_dir}/T*.json')) # Focus on T-series files
+    if limit:
+        print(f"--- LIMITING TO {limit} APPLICATIONS ---")
+        app_files = app_files[:limit]
     total_apps = len(app_files)
     
     # If num_seeds is 1, we run with seed 0. Otherwise, seeds from 1 to num_seeds.
@@ -120,14 +121,22 @@ def generate_all_solutions(app_dir='Application', timeout=300, skip_existing=Tru
             solution_id = f"{app_name}_{seed_label}"
             
             if success:
-                results['valid'].append(solution_id)
+                results['success'].append(solution_id)
                 print(f"OK Valid     [ETA: {int(eta//60)}m {int(eta%60)}s]")
             else:
                 if "Invalid" in message:
                     results['invalid'].append((solution_id, message))
                 else:
                     results['failed'].append((solution_id, message))
-                print(f"ERR {message[:35]:<35} [ETA: {int(eta//60)}m {int(eta%60)}s]")
+                # Print the full error message without truncation for debugging
+                # Encode to ASCII with error replacement to avoid UnicodeEncodeError
+                safe_message = message.encode('ascii', errors='replace').decode('ascii')
+                print(f"ERR {safe_message} [ETA: {int(eta//60)}m {int(eta%60)}s]")
+        
+        # Break if limit is reached
+        if limit is not None and app_idx >= limit:
+            print(f"Limit of {limit} applications reached.")
+            break
     
     total_time = time.time() - start_time
     
@@ -170,13 +179,15 @@ def main():
     parser.add_argument('--seeds', type=int, default=1, help='Number of seeds per application. If 1, runs with seed 0.')
     parser.add_argument('--timeout', type=int, default=300, help='Timeout per GA run in seconds.')
     parser.add_argument('--no-skip', action='store_true', help='Force regeneration even if solution exists.')
+    parser.add_argument('--limit', type=int, default=None, help='Limit the number of applications to process.')
     
     args = parser.parse_args()
     
     generate_all_solutions(
         timeout=args.timeout,
         skip_existing=not args.no_skip,
-        num_seeds=args.seeds
+        num_seeds=args.seeds,
+        limit=args.limit
     )
 
 if __name__ == '__main__':

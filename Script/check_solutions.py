@@ -64,7 +64,7 @@ def find_platform_file(application_path: str = None, platform_dir: str = 'Platfo
         app_basename = os.path.basename(application_path)
         
         # --- FIX FOR T2_VAR APPLICATIONS ---
-        if app_basename.startswith('T2_'):
+        if app_basename.startswith('T2'):
              # T2 solutions use nodes (53, 54) found in 3_Tier_Platform.json or 5_Platform.json
              platform_name = '3_Tier_Platform.json' 
              platform_path = os.path.join(project_dir, platform_dir, platform_name)

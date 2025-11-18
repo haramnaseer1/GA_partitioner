@@ -7,7 +7,7 @@ Generates GA solutions and converts them to multi-task training tensors.
 Usage:
     python generate_training_data.py                    # Default: 5 seeds, 50/30 iterations
     python generate_training_data.py --seeds 3          # Custom seeds
-    python generate_training_data.py --quick            # Quick test: 1 seed, 10/10 iterations
+    python generate_training_data.py --quick            # Quick test: 1 seed, 2/2 iterations
     python generate_training_data.py --regenerate       # Skip GA, regenerate tensors only
 """
 
@@ -82,7 +82,7 @@ def update_config(iterations_gca, iterations_lga):
         print("  WARNING: Could not find iteration settings in config.py")
 
 
-def run_ga_generation(num_seeds, timeout, no_skip):
+def run_ga_generation(num_seeds, timeout, no_skip, limit=None):
     """Run GA solution generation"""
     print("\n" + "="*70)
     print("STEP 1: GENERATING GA SOLUTIONS")
@@ -97,6 +97,9 @@ def run_ga_generation(num_seeds, timeout, no_skip):
     
     if no_skip:
         cmd.append('--no-skip')
+
+    if limit:
+        cmd.extend(['--limit', str(limit)])
     
     print(f"Command: {' '.join(cmd)}")
     print(f"This will run GA for all applications with {num_seeds} seeds")
@@ -184,7 +187,7 @@ def main():
 Examples:
   python generate_training_data.py                    # Full generation (5 seeds, 50/30 iter)
   python generate_training_data.py --seeds 3          # 3 seeds instead of 5
-  python generate_training_data.py --quick            # Quick test (1 seed, 10/10 iter)
+  python generate_training_data.py --quick            # Quick test (1 seed, 2/2 iter)
   python generate_training_data.py --regenerate       # Regenerate tensors only
   python generate_training_data.py --gca 30 --lga 20  # Custom iterations
         """
@@ -199,11 +202,13 @@ Examples:
     parser.add_argument('--timeout', type=int, default=300,
                         help='Timeout per GA run in seconds (default: 300)')
     parser.add_argument('--quick', action='store_true',
-                        help='Quick test mode: 1 seed, 10/10 iterations')
+                        help='Quick test mode: 1 seed, 2/2 iterations')
     parser.add_argument('--regenerate', action='store_true',
                         help='Skip GA generation, only regenerate tensors from existing solutions')
     parser.add_argument('--no-skip', action='store_true',
                         help='Do not skip existing solutions, regenerate all')
+    parser.add_argument('--limit', type=int, default=None,
+                        help='Limit the number of applications to process for debugging')
     parser.add_argument('--output', '-o', type=str, default='training_data_multitask.pt',
                         help='Output path for training tensors (default: training_data_multitask.pt)')
     
@@ -212,8 +217,8 @@ Examples:
     # Quick mode overrides
     if args.quick:
         args.seeds = 1
-        args.gca = 10
-        args.lga = 10
+        args.gca = 2
+        args.lga = 2
         print("\n*** QUICK TEST MODE ***")
         print(f"Seeds: {args.seeds}, GCA: {args.gca}, LGA: {args.lga}\n")
     
@@ -255,7 +260,7 @@ Examples:
     
     if not args.regenerate:
         # Step 1: Generate GA solutions
-        success = run_ga_generation(args.seeds, args.timeout, args.no_skip)
+        success = run_ga_generation(args.seeds, args.timeout, args.no_skip, args.limit)
     else:
         print("\n>>> Skipping GA generation (--regenerate mode)")
         success = True
