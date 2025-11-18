@@ -48,7 +48,9 @@ def local_ga(application_model, platform_model,clocking_speed,rsc_mapping,Proces
         return _local_ga_impl(application_model, platform_model,clocking_speed,rsc_mapping,Processor_List, PopSzLGA, NGLGA,MTLGA,CXLGA,TSLGA,task_can_run_info,subGraphInfo)
     except Exception as e:
         # If local_ga fails, return a fallback schedule
+        import traceback
         logging.error(f"local_ga failed for application {application_model}, platform {platform_model}: {e}")
+        logging.error(traceback.format_exc())
         # Return empty schedule with high makespan to indicate failure
         return application_model, {}, 999999.0
 
@@ -391,7 +393,7 @@ def _local_ga_impl(application_model, platform_model,clocking_speed,rsc_mapping,
                 # Check if ALL predecessors are completed (both internal and external)
                 # For external predecessors, we assume they're done and just need communication delay
                 all_predecessors_ready = True
-                for sender, _, _, _, _ in predecessors:
+                for sender, _, _, _, _, _ in predecessors:  # FIX: 6-tuple (sender, comm_delay, priority, path_id, message_id, original_size)
                     if sender in task_ids_in_partition and sender not in scheduled_tasks:
                         all_predecessors_ready = False
                         break
