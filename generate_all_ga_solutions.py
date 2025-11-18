@@ -1,30 +1,32 @@
 """Generate GA solutions for all applications in batch with progress tracking"""
+import argparse
 import subprocess
+import sys
+import os
+from pathlib import Path
+import time
 import json
 import glob
-import time
-from pathlib import Path
 from datetime import datetime
-import sys
 
 def run_ga_for_application(app_path, seed=0, timeout=300):
-    """Run GA for a single application with specific seed"""
+    """Run GA for a single application with a specific seed"""
     try:
         # Run main GA with seed
-        cmd = ['python', '-m', 'src.main', str(seed), app_path]
+        cmd = [sys.executable, '-m', 'src.main', str(seed), app_path]
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, encoding='utf-8', errors='replace')
         
         if result.returncode != 0:
             return False, f"GA failed: {result.stderr[-200:]}"
         
         # Call simplify.py to extract solution from log
-        simplify_cmd = ['python', 'src/simplify.py', '--input', app_path, '--seed', str(seed)]
+        simplify_cmd = [sys.executable, 'src/simplify.py', '--input', app_path, '--seed', str(seed)]
         simplify_result = subprocess.run(simplify_cmd, capture_output=True, text=True, timeout=60, encoding='utf-8', errors='replace')
         
         if simplify_result.returncode != 0:
             return False, f"Simplify failed: {simplify_result.stderr[-200:]}"
         
-        # Check if solution file was created
+        # Determine the correct solution path based on the seed
         app_name = Path(app_path).stem
         if seed == 0:
             solution_path = f'solution/{app_name}_ga.json'
@@ -35,44 +37,43 @@ def run_ga_for_application(app_path, seed=0, timeout=300):
             return False, "Solution file not created"
         
         # Validate solution
-        val_cmd = ['python', 'Script/check_solutions.py', '--solution', solution_path, '--application', app_path]
+        val_cmd = [sys.executable, 'Script/check_solutions.py', '--solution', solution_path, '--application', app_path]
         val_result = subprocess.run(val_cmd, capture_output=True, text=True, timeout=60, encoding='utf-8', errors='replace')
         
-        # Check if valid (check for "Valid: YES" or "Valid: True")
+        # Check for validity
         if 'Valid: YES' in val_result.stdout or 'valid=True' in val_result.stdout or 'Valid: True' in val_result.stdout:
             return True, "Valid"
         else:
             # Extract validation errors
             lines = val_result.stdout.split('\n')
             errors = [line.strip() for line in lines if 'False' in line or 'violation' in line.lower() or 'FAIL' in line]
-            return False, f"Invalid: {' '.join(errors[:2])}"
+            error_summary = ' '.join(errors[:2]) if errors else "Unknown validation error"
+            return False, f"Invalid: {error_summary}"
             
     except subprocess.TimeoutExpired:
         return False, f"Timeout ({timeout}s)"
     except Exception as e:
         return False, f"Error: {str(e)[:100]}"
 
-def generate_all_solutions(app_dir='Application', timeout=300, skip_existing=True, num_seeds=5):
-    """Generate GA solutions for all applications with multiple seeds
-    
-    Args:
-        app_dir: Directory containing application JSON files
-        timeout: Timeout per GA run in seconds
-        skip_existing: Skip if solution file already exists
-        num_seeds: Number of random seeds to generate per application (default: 5)
+def generate_all_solutions(app_dir='Application', timeout=300, skip_existing=True, num_seeds=1):
+    """
+    Generate GA solutions for all applications with multiple seeds.
+    A num_seeds value of 1 will run with seed 0.
     """
     
-    # Get all application files
-    app_files = sorted(glob.glob(f'{app_dir}/*.json'))
+    app_files = sorted(glob.glob(f'{app_dir}/T*.json')) # Focus on T-series files
     total_apps = len(app_files)
-    total_runs = total_apps * num_seeds
+    
+    # If num_seeds is 1, we run with seed 0. Otherwise, seeds from 1 to num_seeds.
+    seeds_to_run = [0] if num_seeds == 1 else range(1, num_seeds + 1)
+    total_runs = total_apps * len(seeds_to_run)
     
     print("="*70)
-    print(f"BATCH GA SOLUTION GENERATION (MULTI-SEED)")
+    print(f"BATCH GA SOLUTION GENERATION")
     print("="*70)
-    print(f"Applications: {total_apps}")
-    print(f"Seeds per app: {num_seeds}")
-    print(f"Total runs: {total_runs} ({total_apps} x {num_seeds})")
+    print(f"Applications to process: {total_apps}")
+    print(f"Seeds to run: {seeds_to_run}")
+    print(f"Total runs: {total_runs}")
     print(f"Timeout per run: {timeout}s")
     print(f"Skip existing: {skip_existing}")
     print(f"Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
@@ -81,7 +82,8 @@ def generate_all_solutions(app_dir='Application', timeout=300, skip_existing=Tru
     results = {
         'valid': [],
         'invalid': [],
-        'failed': []
+        'failed': [],
+        'skipped': []
     }
     
     start_time = time.time()
@@ -90,31 +92,32 @@ def generate_all_solutions(app_dir='Application', timeout=300, skip_existing=Tru
     for app_idx, app_path in enumerate(app_files, 1):
         app_name = Path(app_path).stem
         
-        for seed in range(num_seeds):
+        for seed in seeds_to_run:
             run_count += 1
             
-            # Determine solution filename
+            # Determine solution filename and seed label
             if seed == 0:
                 solution_path = f'solution/{app_name}_ga.json'
-                seed_label = f"seed{seed:02d}"
+                seed_label = "seed0"
             else:
                 solution_path = f'solution/{app_name}_seed{seed:02d}_ga.json'
                 seed_label = f"seed{seed:02d}"
             
-            # Skip if solution exists and valid
+            # Skip if solution exists
             if skip_existing and Path(solution_path).exists():
                 print(f"[{run_count:3d}/{total_runs}] O {app_name:25s} {seed_label} [SKIPPED]")
+                results['skipped'].append(f"{app_name}_{seed_label}")
                 continue
             
             print(f"[{run_count:3d}/{total_runs}] > {app_name:25s} {seed_label} ", end='', flush=True)
             
-            # Run GA with seed
+            # Run GA
             success, message = run_ga_for_application(app_path, seed, timeout)
             
             elapsed = time.time() - start_time
-            eta = (elapsed / run_count) * (total_runs - run_count)
+            eta = (elapsed / run_count) * (total_runs - run_count) if run_count > 0 else 0
             
-            solution_id = f"{app_name}_seed{seed:02d}"
+            solution_id = f"{app_name}_{seed_label}"
             
             if success:
                 results['valid'].append(solution_id)
@@ -122,83 +125,59 @@ def generate_all_solutions(app_dir='Application', timeout=300, skip_existing=Tru
             else:
                 if "Invalid" in message:
                     results['invalid'].append((solution_id, message))
-                    print(f"ERR {message[:35]:35s} [ETA: {int(eta//60)}m {int(eta%60)}s]")
                 else:
                     results['failed'].append((solution_id, message))
-                    print(f"WARN {message[:35]:35s} [ETA: {int(eta//60)}m {int(eta%60)}s]")
+                print(f"ERR {message[:35]:<35} [ETA: {int(eta//60)}m {int(eta%60)}s]")
     
     total_time = time.time() - start_time
     
-    # Print summary
+    # Summary
     print("\n" + "="*70)
     print("GENERATION SUMMARY")
     print("="*70)
-    print(f"Applications: {total_apps}")
-    print(f"Seeds per app: {num_seeds}")
-    print(f"Total runs: {total_runs}")
-    print(f"Valid solutions:    {len(results['valid'])} ({len(results['valid'])/total_runs*100:.1f}%)")
-    print(f"Invalid solutions:  {len(results['invalid'])} ({len(results['invalid'])/total_runs*100:.1f}%)")
-    print(f"Failed to run:      {len(results['failed'])} ({len(results['failed'])/total_runs*100:.1f}%)")
+    print(f"Total runs planned: {total_runs}")
+    print(f"Valid solutions:    {len(results['valid'])}")
+    print(f"Skipped solutions:  {len(results['skipped'])}")
+    print(f"Invalid solutions:  {len(results['invalid'])}")
+    print(f"Failed runs:        {len(results['failed'])}")
     print(f"Total time:         {int(total_time//60)}m {int(total_time%60)}s")
-    print(f"Avg time/run:       {total_time/total_runs:.1f}s")
+    if run_count > len(results['skipped']):
+        avg_time = total_time / (run_count - len(results['skipped']))
+        print(f"Avg time/run:       {avg_time:.1f}s")
     print("="*70)
     
-    # Save detailed results
+    # Save detailed report
     report = {
         'timestamp': datetime.now().isoformat(),
-        'applications': total_apps,
-        'seeds_per_app': num_seeds,
-        'total_runs': total_runs,
-        'valid_count': len(results['valid']),
-        'invalid_count': len(results['invalid']),
-        'failed_count': len(results['failed']),
-        'valid': results['valid'],
-        'invalid': [{'solution': app, 'reason': msg} for app, msg in results['invalid']],
-        'failed': [{'solution': app, 'reason': msg} for app, msg in results['failed']],
-        'total_time_seconds': total_time,
-        'avg_time_seconds': total_time / total_runs
+        'config': {'apps': total_apps, 'seeds': num_seeds, 'timeout': timeout},
+        'summary': {
+            'valid': len(results['valid']),
+            'invalid': len(results['invalid']),
+            'failed': len(results['failed']),
+            'skipped': len(results['skipped'])
+        },
+        'invalid_details': results['invalid'],
+        'failed_details': results['failed'],
     }
-    
-    report_file = 'ga_generation_report.json'
-    with open(report_file, 'w') as f:
-        json.dump(report, f, indent=2)
-    print(f"\n[OK] Detailed report saved to: {report_file}")
-    
-    # Show invalid/failed details
-    if results['invalid']:
-        print(f"\nInvalid solutions ({len(results['invalid'])}):")
-        for app, msg in results['invalid'][:10]:
-            print(f"  - {app}: {msg[:60]}")
-        if len(results['invalid']) > 10:
-            print(f"  ... and {len(results['invalid'])-10} more")
-    
-    if results['failed']:
-        print(f"\nFailed executions ({len(results['failed'])}):")
-        for app, msg in results['failed'][:10]:
-            print(f"  - {app}: {msg[:60]}")
-        if len(results['failed']) > 10:
-            print(f"  ... and {len(results['failed'])-10} more")
-    
-    return results
+    report_path = f"solution/report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+    with open(report_path, 'w') as f:
+        json.dump(report, f, indent=4)
+    print(f"Detailed report saved to {report_path}")
 
-if __name__ == "__main__":
+def main():
     import argparse
-    
-    parser = argparse.ArgumentParser(description='Generate GA solutions for all applications with multiple seeds')
-    parser.add_argument('--timeout', type=int, default=300, help='Timeout per GA run (seconds)')
-    parser.add_argument('--no-skip', action='store_true', help='Regenerate existing solutions')
-    parser.add_argument('--app-dir', type=str, default='Application', help='Application directory')
-    parser.add_argument('--seeds', type=int, default=5, help='Number of seeds per application (default: 5)')
+    parser = argparse.ArgumentParser(description="Batch generate GA solutions for all applications.")
+    parser.add_argument('--seeds', type=int, default=1, help='Number of seeds per application. If 1, runs with seed 0.')
+    parser.add_argument('--timeout', type=int, default=300, help='Timeout per GA run in seconds.')
+    parser.add_argument('--no-skip', action='store_true', help='Force regeneration even if solution exists.')
     
     args = parser.parse_args()
     
-    results = generate_all_solutions(
-        app_dir=args.app_dir,
+    generate_all_solutions(
         timeout=args.timeout,
         skip_existing=not args.no_skip,
         num_seeds=args.seeds
     )
-    
-    # Exit with error if no valid solutions
-    if len(results['valid']) == 0:
-        sys.exit(1)
+
+if __name__ == '__main__':
+    sys.exit(main())
