@@ -66,15 +66,26 @@ def generate_subgraphs(graph, current_run):
     """
     subgraphs = []
     current_part =0 # Current partition number
+    max_iterations = len(graph.nodes()) + 10  # Safety limit to prevent infinite loops
+    iterations = 0
     
-    while graph.nodes():
+    while graph.nodes() and iterations < max_iterations:
+        iterations += 1
         current_part =current_part+1
-        random_start_node = random.choice(list(graph.nodes()))
+        # Try to start from a node with most connections for better partitioning
+        nodes_by_degree = sorted(graph.nodes(), key=lambda n: graph.out_degree(n) + graph.in_degree(n), reverse=True)
+        random_start_node = nodes_by_degree[0] if nodes_by_degree else random.choice(list(graph.nodes()))
+        
         result_subgraph,key1,key2 = dfs(graph, random_start_node,current_run,current_part)
         if not result_subgraph[key1]:
             break # Break if no nodes are found in the result.
         graph.remove_nodes_from(result_subgraph[key1])
         subgraphs.append(result_subgraph)
+    
+    # Safety check: if graph still has nodes, something went wrong
+    if graph.nodes():
+        print(f"WARNING: {len(graph.nodes())} nodes not partitioned!")
+    
     return subgraphs
 
 # Function to generate a set of subgraphs for a given graph when constarin mode is active
@@ -91,11 +102,18 @@ def generate_subgraphs_constrainmode(graph, current_run,con_g):
     """
     subgraphs = []
     current_part =0 # Current partition number
-    while con_g.nodes() or graph.nodes():
+    max_iterations = len(graph.nodes()) + len(con_g.nodes()) + 10
+    iterations = 0
+    
+    while (con_g.nodes() or graph.nodes()) and iterations < max_iterations:
+        iterations += 1
         # Generate subgraphs for constrained tasks
         while con_g.nodes():
             current_part = current_part+1
-            random_start_node = random.choice(list(con_g.nodes()))
+            # Prefer high-degree nodes for better partitioning
+            nodes_by_degree = sorted(con_g.nodes(), key=lambda n: con_g.out_degree(n) + con_g.in_degree(n), reverse=True)
+            random_start_node = nodes_by_degree[0] if nodes_by_degree else random.choice(list(con_g.nodes()))
+            
             result_subgraph,key1,key2 = dfs(con_g, random_start_node,current_run,current_part)
             if not result_subgraph[key1]:
                 break   # Break if no nodes are found in the result.
@@ -105,12 +123,20 @@ def generate_subgraphs_constrainmode(graph, current_run,con_g):
         # Generate subgraphs for unconstrained tasks
         while graph.nodes():
             current_part =current_part+1
-            random_start_node = random.choice(list(graph.nodes()))
+            # Prefer high-degree nodes for better partitioning
+            nodes_by_degree = sorted(graph.nodes(), key=lambda n: graph.out_degree(n) + graph.in_degree(n), reverse=True)
+            random_start_node = nodes_by_degree[0] if nodes_by_degree else random.choice(list(graph.nodes()))
+            
             result_subgraph,key1,key2 = dfs(graph, random_start_node,current_run,current_part)
             if not result_subgraph[key1]:
                 break # Break if no nodes are found in the result.
             graph.remove_nodes_from(result_subgraph[key1])
             subgraphs.append(result_subgraph)
+    
+    # Safety check
+    if graph.nodes() or con_g.nodes():
+        print(f"WARNING: {len(graph.nodes()) + len(con_g.nodes())} nodes not partitioned!")
+    
     return subgraphs
 
 # Function to run the subgraph generation process multiple times in constrained mode
