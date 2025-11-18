@@ -1,9 +1,10 @@
 """
-Validation Utilities for GA Schedule Constraint Checking
+Validation Utilities for GA Schedule Constraint Checking - COMPLETE VERSION
 =========================================================
 
 This module provides utilities for validating task scheduling solutions
-against GA constraints including precedence, non-overlap, and eligibility.
+against GA constraints including precedence, non-overlap, eligibility, 
+AND timing consistency.
 
 Based on Guide.pdf §10.7 - Tier-based latency model
 """
@@ -11,26 +12,17 @@ Based on Guide.pdf §10.7 - Tier-based latency model
 import json
 import numpy as np
 from typing import Dict, List, Any, Tuple, Optional
-
+import re # Added for clean clock speed parsing
 
 # =====================================================================
 # TIER MAPPING AND LATENCY CONSTANTS (FROM Guide.pdf §10.7)
 # =====================================================================
 
+# (Tier functions remain unchanged)
+
 def get_tier_from_node_id(node_id: int) -> str:
     """
     Determines the tier (Edge, Fog, Cloud) based on the node ID range.
-    
-    Tier ranges:
-    - Edge: 11-99
-    - Fog: 101-999
-    - Cloud: ≥1001
-    
-    Args:
-        node_id: Platform node ID
-        
-    Returns:
-        str: 'Edge', 'Fog', 'Cloud', or 'Unknown'
     """
     if 11 <= node_id <= 99:
         return 'Edge'
@@ -45,23 +37,8 @@ def get_tier_from_node_id(node_id: int) -> str:
 def get_inter_tier_delay(sender_tier: str, receiver_tier: str) -> float:
     """
     Returns the fixed tier-based communication delay constant.
-    
-    Delay matrix (from Guide.pdf §10.7):
-    - Edge ↔ Edge: 50
-    - Edge ↔ Fog: 150
-    - Edge ↔ Cloud: 350
-    - Fog ↔ Cloud: 200
-    - Cloud ↔ Cloud: 175
-    - Same node: 0
-    
-    Args:
-        sender_tier: Tier of sending task
-        receiver_tier: Tier of receiving task
-        
-    Returns:
-        float: Communication delay in time units
     """
-    # Tier-based delay constants
+    # Delay matrix (from Guide.pdf §10.7)
     DELAYS = {
         ('Edge', 'Edge'): 50.0,
         ('Edge', 'Fog'): 150.0,
@@ -89,17 +66,6 @@ def calculate_precedence_delay(
     """
     Calculates the minimum required delay (Δ) between a sender's end time
     and a receiver's start time.
-    
-    In the GA implementation, the message_size already includes the path_cost
-    (communication delay), so the precedence delay is simply the message_size.
-    
-    Args:
-        sender_node_id: Node ID where sender task executes
-        receiver_node_id: Node ID where receiver task executes
-        message_size: Size of message (already includes path_cost from GA)
-        
-    Returns:
-        float: Minimum precedence delay (just the message_size)
     """
     # The GA adds path_cost to message_size at line 309 of global_GA.py
     # So message_size already represents the full communication delay
@@ -113,9 +79,6 @@ def calculate_precedence_delay(
 def resource_mapping() -> Dict[int, str]:
     """
     Maps GA resource class IDs to processor type strings.
-    
-    Returns:
-        dict: Resource ID → Processor type name
     """
     return {
         1: 'General purpose CPU',
@@ -123,7 +86,7 @@ def resource_mapping() -> Dict[int, str]:
         3: 'Raspberry Pi 5',
         4: 'Microcontroller',
         5: 'High Performance CPU',
-        6: 'GPU'
+        6: 'Graphical Processing Unit'
     }
 
 
@@ -131,32 +94,43 @@ def resource_mapping() -> Dict[int, str]:
 # DATA EXTRACTION HELPERS
 # =====================================================================
 
-def prepare_processor_eligibility(platform_json: Dict[str, Any]) -> Dict[int, str]:
+def parse_clock_speed(speed_str: str) -> float:
     """
-    Extracts a map of processor Node ID to its Type.
+    Converts clock speed string (e.g., '1.5 GHz', '300 MHz', '16 MHz') to MHz float.
+    Assumes 1 GHz = 1000 MHz.
+    """
+    match = re.match(r'(\d+\.?\d*)\s*(GHz|MHz)', speed_str, re.IGNORECASE)
+    if not match:
+        return 0.0
     
-    Args:
-        platform_json: Platform configuration dictionary
-        
-    Returns:
-        dict: Node ID → Processor type
+    value = float(match.group(1))
+    unit = match.group(2).upper()
+    
+    if unit == 'GHZ':
+        return value * 1000.0
+    elif unit == 'MHZ':
+        return value
+    return 0.0
+
+
+def prepare_processor_details(platform_json: Dict[str, Any]) -> Dict[int, Dict[str, Any]]:
     """
-    processor_types = {}
+    Extracts a map of processor Node ID to its Type and Clock Speed (in MHz).
+    """
+    processor_details = {}
     for node in platform_json['platform']['nodes']:
         if not node.get('is_router', False):
-            processor_types[node['id']] = node.get('type_of_processor')
-    return processor_types
+            speed_str = node.get('clocking_speed', '0 MHz')
+            processor_details[node['id']] = {
+                'type': node.get('type_of_processor'),
+                'speed_mhz': parse_clock_speed(speed_str)
+            }
+    return processor_details
 
 
 def prepare_task_eligibility(application_json: Dict[str, Any]) -> Dict[int, List[str]]:
     """
     Extracts a map of Task ID to allowed Processor Types.
-    
-    Args:
-        application_json: Application graph dictionary
-        
-    Returns:
-        dict: Task ID → List of allowed processor types
     """
     task_eligibility = {}
     resource_map = resource_mapping()
@@ -171,6 +145,18 @@ def prepare_task_eligibility(application_json: Dict[str, Any]) -> Dict[int, List
         task_eligibility[job['id']] = allowed_types
     
     return task_eligibility
+
+
+def prepare_task_performance(application_json: Dict[str, Any]) -> Dict[int, float]:
+    """
+    Extracts a map of Task ID to its processing time (WCET).
+    """
+    task_performance = {}
+    for job in application_json['application']['jobs']:
+        # Assuming WCET is stored under 'processing_times' or 'wcet_fullspeed'
+        # Using 'processing_times' as it appears in T2.json alongside WCET.
+        task_performance[job['id']] = float(job.get('processing_times', job.get('wcet_fullspeed', 0)))
+    return task_performance
 
 
 def load_application_data(app_path: str) -> Dict[str, Any]:
@@ -199,29 +185,68 @@ def load_solution_data(solution_path: str) -> List[Dict[str, Any]]:
 # CONSTRAINT VALIDATION FUNCTIONS
 # =====================================================================
 
+def check_timing_consistency(
+    solution: List[Dict[str, Any]],
+    task_performance: Dict[int, float],
+    processor_details: Dict[int, Dict[str, Any]]
+) -> Tuple[bool, List[str]]:
+    """
+    Check if the scheduled task duration matches the expected duration based on
+    WCET (processing_times) and the assigned processor's clock speed.
+    
+    Assumes WCET is normalized to a 1000 MHz (1 GHz) reference speed.
+    
+    Expected_Duration = WCET * (Reference_Speed / Node_Speed)
+    """
+    violations = []
+    REFERENCE_SPEED_MHZ = 1000.0
+    TOLERANCE = 0.05  # Allow 5% deviation
+
+    for task in solution:
+        task_id = task['task_id']
+        node_id = task['node_id']
+        
+        # 1. Get required data
+        wcet = task_performance.get(task_id, 0.0)
+        
+        if node_id not in processor_details:
+             violations.append(f"Timing violation: Node {node_id} details not found in platform.")
+             continue
+             
+        node_speed = processor_details[node_id]['speed_mhz']
+        scheduled_duration = task['end_time'] - task['start_time']
+        
+        if wcet <= 0 or node_speed <= 0:
+            # Cannot check consistency if data is missing or zero
+            continue
+            
+        # 2. Calculate expected duration
+        # We check for the scaling factor error only if the expected time is significant (e.g., > 10 time units)
+        expected_duration = wcet * (REFERENCE_SPEED_MHZ / node_speed)
+        
+        # 3. Compare with scheduled duration
+        if abs(scheduled_duration - expected_duration) / expected_duration > TOLERANCE:
+            violations.append(
+                f"Timing violation: Task {task_id} on Node {node_id} ({node_speed:.1f} MHz). "
+                f"Expected duration: {expected_duration:.4f}, Scheduled: {scheduled_duration:.4f}. "
+                f"Deviation: {abs(scheduled_duration - expected_duration) / expected_duration * 100:.2f}%"
+            )
+            
+    return len(violations) == 0, violations
+
+
 def check_precedence_constraints(
     solution: List[Dict[str, Any]],
     application: Dict[str, Any]
 ) -> Tuple[bool, List[str]]:
     """
     Check if precedence constraints are satisfied.
-    
-    For each dependency u → v:
-    Start(v) ≥ End(u) + Δ(u,v)
-    
-    Args:
-        solution: List of task assignments with timing and dependencies
-        application: Application graph (not used, kept for compatibility)
-        
-    Returns:
-        tuple: (all_satisfied, list of violations)
     """
     violations = []
     
     # Build task mapping for quick lookup
     task_map = {task['task_id']: task for task in solution}
     
-    # Check dependencies for each task using solution's dependency information
     for task in solution:
         receiver_id = task['task_id']
         receiver_start = task['start_time']
@@ -229,7 +254,8 @@ def check_precedence_constraints(
         
         for dep in dependencies:
             sender_id = dep['task_id']
-            message_size = dep.get('message_size', 0)
+            # Message_size is assumed to contain the full precedence delay (T_comm)
+            precedence_delay = dep.get('message_size', 0) 
             
             if sender_id not in task_map:
                 violations.append(
@@ -240,14 +266,18 @@ def check_precedence_constraints(
             sender_task = task_map[sender_id]
             sender_end = sender_task['end_time']
             
-            # Check: Start(receiver) >= End(sender) + message_size
-            required_start = sender_end + message_size
-            actual_gap = receiver_start - sender_end
+            # Check: Start(receiver) >= End(sender) + precedence_delay
+            required_start = sender_end + precedence_delay
             
-            if receiver_start < required_start - 1e-6:  # Small epsilon for floating point
+            # Use a small epsilon for floating point comparison tolerance
+            EPSILON = 1e-6 
+            
+            if receiver_start < required_start - EPSILON:
+                actual_gap = receiver_start - sender_end
                 violations.append(
                     f"Precedence violation: Task {sender_id} -> {receiver_id}, "
-                    f"required delay={message_size:.2f}, actual gap={actual_gap:.2f}"
+                    f"Required start: {required_start:.4f}, Actual start: {receiver_start:.4f}. "
+                    f"Required delay={precedence_delay:.4f}, actual gap={actual_gap:.4f}"
                 )
     
     return len(violations) == 0, violations
@@ -258,13 +288,6 @@ def check_non_overlap_constraints(
 ) -> Tuple[bool, List[str]]:
     """
     Check if tasks on the same processor have non-overlapping execution windows.
-    Tasks can start exactly when another ends (non-strict inequality).
-    
-    Args:
-        solution: List of task assignments with timing
-        
-    Returns:
-        tuple: (all_satisfied, list of violations)
     """
     violations = []
     
@@ -289,9 +312,11 @@ def check_non_overlap_constraints(
             curr_end = curr.get('end_time', 0)
             next_start = next_task.get('start_time', 0)
             
-            # Only flag if tasks truly overlap (one starts before the other ends)
-            # Allow exact boundary matching (curr_end == next_start)
-            if next_start < curr_end - 1e-6:  # True overlap
+            # Use a small epsilon for floating point comparison tolerance
+            EPSILON = 1e-6 
+            
+            # Only flag if tasks truly overlap (next_start is before curr_end)
+            if next_start < curr_end - EPSILON:
                 violations.append(
                     f"Overlap on processor {node_id}: "
                     f"Task {curr['task_id']} (ends {curr_end:.6f}) overlaps with "
@@ -308,19 +333,12 @@ def check_eligibility_constraints(
 ) -> Tuple[bool, List[str]]:
     """
     Check if tasks are assigned to eligible processors.
-    
-    Args:
-        solution: List of task assignments
-        application: Application graph with task requirements
-        platform: Platform configuration
-        
-    Returns:
-        tuple: (all_satisfied, list of violations)
     """
     violations = []
     
     # Get processor types
-    processor_types = prepare_processor_eligibility(platform)
+    processor_details = prepare_processor_details(platform)
+    processor_types = {k: v['type'] for k, v in processor_details.items()}
     
     # Get task eligibility
     task_eligibility = prepare_task_eligibility(application)
@@ -338,7 +356,7 @@ def check_eligibility_constraints(
         
         if actual_type not in allowed_types:
             violations.append(
-                f"Eligibility violation: Task {task_id} assigned to {actual_type}, "
+                f"Eligibility violation: Task {task_id} assigned to Node {node_id} ({actual_type}), "
                 f"but can only run on {allowed_types}"
             )
     
@@ -352,21 +370,16 @@ def validate_solution(
     verbose: bool = True
 ) -> Dict[str, Any]:
     """
-    Comprehensive validation of a GA solution.
-    
-    Args:
-        solution_path: Path to solution JSON
-        application_path: Path to application JSON
-        platform_path: Path to platform JSON
-        verbose: Print detailed results
-        
-    Returns:
-        dict: Validation results with all constraint checks
+    Comprehensive validation of a GA solution, including timing consistency.
     """
     # Load data
     solution = load_solution_data(solution_path)
     application = load_application_data(application_path)
     platform = load_platform_data(platform_path)
+    
+    # Prepare lookup data for complex checks
+    task_performance = prepare_task_performance(application)
+    processor_details = prepare_processor_details(platform)
     
     # Check constraints
     precedence_ok, precedence_violations = check_precedence_constraints(solution, application)
@@ -374,12 +387,15 @@ def validate_solution(
     eligibility_ok, eligibility_violations = check_eligibility_constraints(
         solution, application, platform
     )
+    timing_ok, timing_violations = check_timing_consistency(
+        solution, task_performance, processor_details
+    )
     
     # Calculate makespan
     makespan = max([task.get('end_time', 0) for task in solution]) if solution else 0
     
     results = {
-        'valid': precedence_ok and overlap_ok and eligibility_ok,
+        'valid': precedence_ok and overlap_ok and eligibility_ok and timing_ok,
         'makespan': makespan,
         'precedence': {
             'satisfied': precedence_ok,
@@ -392,36 +408,36 @@ def validate_solution(
         'eligibility': {
             'satisfied': eligibility_ok,
             'violations': eligibility_violations
+        },
+        'timing_consistency': {
+            'satisfied': timing_ok,
+            'violations': timing_violations
         }
     }
     
     if verbose:
         print("="*70)
-        print("VALIDATION RESULTS")
+        print(f"VALIDATION RESULTS for {solution_path}")
         print("="*70)
-        print(f"Solution: {solution_path}")
         print(f"Valid: {'YES' if results['valid'] else 'NO'}")
-        print(f"Makespan: {makespan:.2f}")
-        print(f"\nPrecedence Constraints: {'PASS' if precedence_ok else 'FAIL'}")
-        if precedence_violations:
-            for v in precedence_violations[:5]:  # Show first 5
-                print(f"  - {v}")
-            if len(precedence_violations) > 5:
-                print(f"  ... and {len(precedence_violations) - 5} more")
+        print(f"Makespan: {makespan:.4f}")
         
-        print(f"\nNon-Overlap Constraints: {'PASS' if overlap_ok else 'FAIL'}")
-        if overlap_violations:
-            for v in overlap_violations[:5]:
-                print(f"  - {v}")
-            if len(overlap_violations) > 5:
-                print(f"  ... and {len(overlap_violations) - 5} more")
+        # --- Print details of checks ---
+        checks = [
+            ('Precedence Constraints', precedence_ok, precedence_violations),
+            ('Non-Overlap Constraints', overlap_ok, overlap_violations),
+            ('Eligibility Constraints', eligibility_ok, eligibility_violations),
+            ('Timing Consistency', timing_ok, timing_violations)
+        ]
         
-        print(f"\nEligibility Constraints: {'PASS' if eligibility_ok else 'FAIL'}")
-        if eligibility_violations:
-            for v in eligibility_violations[:5]:
-                print(f"  - {v}")
-            if len(eligibility_violations) > 5:
-                print(f"  ... and {len(eligibility_violations) - 5} more")
+        for name, ok, violations in checks:
+            print(f"\n{name}: {'PASS' if ok else 'FAIL'}")
+            if violations:
+                for v in violations[:5]: 
+                    print(f"  - {v}")
+                if len(violations) > 5:
+                    print(f"  ... and {len(violations) - 5} more")
+        
         print("="*70)
     
     return results

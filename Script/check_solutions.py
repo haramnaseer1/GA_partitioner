@@ -3,14 +3,7 @@ GA Solution Validation Script
 ==============================
 
 Command-line tool for validating GA scheduling solutions against constraints.
-
-Usage:
-    python Script/check_solutions.py --solution solution/T2_var_001_ga.json
-
-This script validates:
-1. Precedence constraints (task dependencies with communication delays)
-2. Non-overlap constraints (no processor conflicts)
-3. Eligibility constraints (tasks run on compatible processors)
+...
 """
 
 import os
@@ -26,16 +19,7 @@ from Script.validation_utils import validate_solution
 
 
 def find_application_file(solution_name: str, app_dir: str = 'Application') -> str:
-    """
-    Find the corresponding application file for a solution.
-    
-    Args:
-        solution_name: Name of solution file (e.g., 'T2_var_001_ga.json' or 'T2_var_001_seed00_ga.json')
-        app_dir: Directory containing application files
-        
-    Returns:
-        str: Path to application file
-    """
+# ... (find_application_file remains unchanged)
     # Remove _ga.json suffix
     base_name = solution_name.replace('_ga.json', '')
     
@@ -62,7 +46,7 @@ def find_application_file(solution_name: str, app_dir: str = 'Application') -> s
 def find_platform_file(application_path: str = None, platform_dir: str = 'Platform') -> str:
     """
     Find the platform configuration file.
-    Auto-detects platform number from application name (e.g., T2_var_001 -> 2_Platform.json)
+    **FIXED: Forces T2 applications to use the comprehensive 3_Tier_Platform.**
     
     Args:
         application_path: Path to application file (used to detect platform number)
@@ -74,11 +58,24 @@ def find_platform_file(application_path: str = None, platform_dir: str = 'Platfo
     script_dir = os.path.dirname(os.path.abspath(__file__))
     project_dir = os.path.dirname(script_dir)
     
-    # Try to detect platform number from application path
     platform_name = '5_Platform.json'  # default fallback
+    
     if application_path:
         app_basename = os.path.basename(application_path)
-        # Extract number from T2_var_*, T5_var_*, etc. (must have underscore)
+        
+        # --- FIX FOR T2_VAR APPLICATIONS ---
+        if app_basename.startswith('T2_'):
+             # T2 solutions use nodes (53, 54) found in 3_Tier_Platform.json or 5_Platform.json
+             platform_name = '3_Tier_Platform.json' 
+             platform_path = os.path.join(project_dir, platform_dir, platform_name)
+             
+             if os.path.exists(platform_path):
+                 return platform_path
+             # Fallback to the other comprehensive platform
+             platform_name = '5_Platform.json'
+        # -----------------------------------
+        
+        # Original Logic: Extract number from T#_var format
         import re
         match = re.match(r'[Tt](\d+)_', app_basename)  # Match T#_var format only
         if match:
@@ -96,6 +93,7 @@ def find_platform_file(application_path: str = None, platform_dir: str = 'Platfo
 
 
 def validate_single_solution(
+# ... (validate_single_solution remains unchanged)
     solution_path: str,
     application_path: str = None,
     platform_path: str = None,
@@ -135,6 +133,7 @@ def validate_single_solution(
 
 
 def validate_all_solutions(
+# ... (validate_all_solutions remains unchanged)
     solution_dir: str = 'solution',
     output_file: str = None,
     verbose: bool = False
@@ -216,6 +215,7 @@ def validate_all_solutions(
 
 
 def main():
+# ... (main remains unchanged)
     """Main entry point for validation script."""
     parser = argparse.ArgumentParser(
         description='Validate GA scheduling solutions against constraints'

@@ -174,26 +174,18 @@ def main_file(client):
     match = re.match(r'[Tt](\d+)_', cfg.file_name)  # Match T#_var format only
     if match:
         platform_num = match.group(1)
-        platform_file = f"{platform_num}_Platform.json"
-    else:
-        # Fallback for non-standard names (use Platform 5)
-        platform_file = "5_Platform.json"
-        if not os.path.exists(os.path.join(cfg.platform_dir_path, platform_file)):
-            platform_file = "3_Platform.json"
-    
-    # Check if path info file exists (only 3_Tier_Platform.json has path info)
-    path_info_file = cfg.path_info + f"/{platform_file}"
-    # FIX: Use platform-specific Paths file to avoid data loss
-    if match:
-        platform_num = match.group(1)
+        # FIX: Check if specific path file exists
         paths_json_file = cfg.path_info + f"/Paths_{platform_num}.json"
     else:
+        # Fallback for non-standard names 
         paths_json_file = cfg.path_info + "/Paths.json"
-        
-    if os.path.exists(path_info_file):
-        current_modified_time = os.path.getmtime(path_info_file)
+    
+    
+    # Check if path info file exists 
+    if os.path.exists(paths_json_file):
+        current_modified_time = os.path.getmtime(paths_json_file)
     else:
-        # For platforms without path info, use a default timestamp
+        # If the specific path file doesn't exist, treat as modified (0)
         current_modified_time = 0
     # print("current_modified_time: ", current_modified_time)
 
@@ -215,14 +207,13 @@ def main_file(client):
     #print("fixed_subgraph_map: ", fixed_subgraph_map)
 
     if current_modified_time == cfg.last_known_time:
-        # print(" Platform has not been modified.")
-        # FIX: Load platform-specific paths file
+        # FIX: Load the correct platform-specific paths file
         with open(paths_json_file) as f:
             merged_path_dict = json.load(f)
     else:
-        # print("Platform has been modified.")
+        # Generate paths and save to the determined platform-specific paths_json_file
         path_dict, merged_path_dict = af.generate_processor_paths(processor_list, pt_graph,cfg.num_path) # Generating the processor paths
-
+        # NOTE: generate_processor_paths saves to the correct platform file name internally
 
     if cfg.DEBUG_MODE:
         print("Processor List: ", processor_list)
@@ -299,9 +290,3 @@ if __name__ == "__main__":
     # Close Dask client
     client.close()  # Close Dask client
     print("Dask client closed")# # Importing the libraries
-
-
-
-
-
-   

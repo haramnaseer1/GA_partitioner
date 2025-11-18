@@ -1,4 +1,3 @@
-
 import random   
 from deap import base, creator, tools
 from copy import deepcopy
@@ -21,7 +20,8 @@ from dask.distributed import Client, LocalCluster, as_completed, wait, Queue as 
 import multiprocessing as mp
 import re
 
-
+# Set the Reference Speed for WCET scaling (1 GHz = 1e9 Hz)
+REFERENCE_SPEED_HZ = 1e9
 
 # --------------------------------------------------------------------------------------------------------------------------------------------
 # Global Genetic Algorithm for the partitioning of the application model and scheduling of the tasks on the platform model
@@ -31,16 +31,8 @@ import re
 
 # --------------------------------------------------------------------------------------------------------------------------------------------
 # Global GA Fitness Evaluation Function
-
-# The Global GA fitness evaluvation calls the local GA and schedules the tasks on the platform model
-# The global GA then recieves the fitness value (makespan) from the local GA
-# Then the total makespan is calculated
-# The makespan is then tried to be minimised using the different operators of the global GA and updating the partitioning. 
 # --------------------------------------------------------------------------------------------------------------------------------------------
 
-
-
-# Local Genetic Algorithm
 
 # Local Genetic Algorithm
 def local_ga(application_model, platform_model,clocking_speed,rsc_mapping,Processor_List, PopSzLGA, NGLGA,MTLGA,CXLGA,TSLGA,task_can_run_info,subGraphInfo):
@@ -428,7 +420,14 @@ def _local_ga_impl(application_model, platform_model,clocking_speed,rsc_mapping,
                         start_time = max(start_time, current_time_per_processor[processor] + EPSILON)
 
                     # Calculate execution time
-                    execution_time = processing_time[task_id] / clk_speed
+                    # CRITICAL FIX: Scale WCET (processing_time) by the ratio of Reference Speed (1 GHz) to Node Clock Speed (Hz)
+                    if clk_speed > 0:
+                        # Correct normalized execution time calculation
+                        execution_time = processing_time[task_id] * (REFERENCE_SPEED_HZ / clk_speed)
+                    else:
+                        # Handle division by zero/zero speed case
+                        execution_time = processing_time[task_id] # Assume 1:1 if speed is zero/unknown
+                        
                     end_time = start_time + execution_time
 
                     # Record the schedule - BUG FIX: Store original message size, not communication delay
@@ -466,7 +465,12 @@ def _local_ga_impl(application_model, platform_model,clocking_speed,rsc_mapping,
                     start_time = current_time_per_processor[processor]
                     if start_time > 0:
                         start_time += EPSILON
-                    execution_time = processing_time[task_id] / clk_speed
+                        
+                    if clk_speed > 0:
+                        execution_time = processing_time[task_id] * (REFERENCE_SPEED_HZ / clk_speed)
+                    else:
+                        execution_time = processing_time[task_id]
+                        
                     end_time = start_time + execution_time
                     
                     predecessors = message_dict[task_id]
@@ -527,7 +531,7 @@ def _local_ga_impl(application_model, platform_model,clocking_speed,rsc_mapping,
 
         return can_run_on,task_processor_mapping
 
-
+    # Function to update the schedule keys with the original task IDs
     def update_schedule_keys(final_schedule, updated_task_id):
         """
         Replace the keys of final_schedule with the corresponding keys from updated_task_id,
@@ -553,6 +557,7 @@ def _local_ga_impl(application_model, platform_model,clocking_speed,rsc_mapping,
             processor, start_time, end_time, dependencies = value
             
             # Update dependencies - convert sender IDs from new back to original
+            # Dependencies store (sender_id, path_id, message_size)
             updated_dependencies = [
                 (inverse_mapping.get(dep[0], dep[0]), dep[1], dep[2])
                 for dep in dependencies
@@ -991,7 +996,12 @@ def _local_ga_impl(application_model, platform_model,clocking_speed,rsc_mapping,
         
         # BUG FIX: Divide processing time by clock speed
         clk_speed = local_clocking_speed.get(pa, 1.5e9)  # Get clock speed for selected processor
-        execution_time = processing_time[0] / clk_speed  # Scale by clock speed
+        
+        if clk_speed > 0:
+            execution_time = processing_time[0] * (REFERENCE_SPEED_HZ / clk_speed)
+        else:
+            execution_time = processing_time[0]
+
         
         FinalSchedule = {tk_id: (pa, 0, execution_time, [])}
         FinalMakespan = execution_time + mkspan_indp_job
@@ -1033,8 +1043,6 @@ def _local_ga_impl(application_model, platform_model,clocking_speed,rsc_mapping,
     # print("Final Schedule",FinalSchedule)
     # print("Final Makespan",FinalMakespan)   
     return application_model,FinalSchedule,FinalMakespan
-
-
 
 
 # -------------------------------------------------------------------------------------------------------------------------------------#
@@ -1260,8 +1268,6 @@ def global_ga_fitness_evaluation(AM,client,TaskNumInAppModel, partition_order, l
     return gl_mkspan
 
 
-
-
 # --------------------------------------------------------------------------------------------------------------------------------------------
 
 
@@ -1428,7 +1434,7 @@ if cfg.operating_mode == "constrain":
             layer_length = len(individual) // 4
             partition_order = individual[:partition_length]
             layer_order = individual[layer_length:layer_length+partition_length]
-            inter_layer_path = individual[partition_length+layer_length:]
+            inter_layer_path = individual[partition_length+layer_length:partition_length+layer_length+partition_length]
             inter_layer_message_priority = individual[partition_length+layer_length+partition_length:]
 
             
@@ -1810,7 +1816,7 @@ else:
             layer_length = len(individual) // 4
             partition_order = individual[:partition_length]
             layer_order = individual[layer_length:layer_length+partition_length]
-            inter_layer_path = individual[partition_length+layer_length:]
+            inter_layer_path = individual[partition_length+layer_length:partition_length+layer_length+partition_length]
             inter_layer_message_priority = individual[partition_length+layer_length+partition_length:]
 
             
@@ -1830,7 +1836,7 @@ else:
             
             if global_ga_fitness > list_schedule_makespan:
                 #print("SubGraphInfo: ", subGraphInfo)   
-                subGraphInfo_ = af.update_individual(adjacency_matrix,subGraphInfo)
+                subGraphInfo_ = af.update_individual(adjacency_matrix,subGraphInfo, [], {}) # Pass empty list and dict for non-constrained mode
                 #print("Updated SubGraphInfo: ", subGraphInfo_)
                 selectedIndividual = af.convert_partition_to_task_list(subGraphInfo_)
                 subGraphInfo = subGraphInfo_
@@ -1893,7 +1899,7 @@ else:
 
         def mutate_inter_layer_path(individual):
             gen_len = len(individual) // 4
-            interpath = individual[gen_len+gen_len:]
+            interpath = individual[gen_len+gen_len:gen_len+gen_len+gen_len]
             if cfg.DEBUG_MODE: 
                 print("interpath before Mutation: ", interpath)
             # FIX: Avoid mutation if interpath has less than 2 elements
@@ -1902,7 +1908,7 @@ else:
             else:
                 updated_interpath = interpath[:]
             #print("updated_interpath: ", updated_interpath)
-            individual[gen_len+gen_len:] = updated_interpath
+            individual[gen_len+gen_len:gen_len+gen_len+gen_len] = updated_interpath
             if cfg.DEBUG_MODE:
                 print("Mutate Inter Layer Path")
                 print("individual: ", individual)   
@@ -2059,5 +2065,3 @@ else:
 # --------------------------------------------------------------------------
 # Auxiliary functions
 # --------------------------------------------------------------------------
-
-

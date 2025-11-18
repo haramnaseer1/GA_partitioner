@@ -10,6 +10,46 @@ import re
 from copy import deepcopy
 
 
+# Set the Reference Speed for WCET scaling (1 GHz = 1e9 Hz)
+REFERENCE_SPEED_HZ = 1e9
+
+
+# =====================================================================
+# TIER MAPPING AND LATENCY CONSTANTS (FROM Guide.pdf §10.7)
+# =====================================================================
+
+def get_tier_from_node_id(node_id: int) -> str:
+    """
+    Determines the tier (Edge, Fog, Cloud) based on the node ID range.
+    """
+    if 11 <= node_id <= 99:
+        return 'Edge'
+    elif 101 <= node_id <= 999:
+        return 'Fog'
+    elif node_id >= 1001:
+        return 'Cloud'
+    else:
+        return 'Unknown'
+
+
+def get_inter_tier_delay(sender_tier: str, receiver_tier: str) -> float:
+    """
+    Returns the fixed tier-based communication delay constant.
+    """
+    DELAYS = {
+        ('Edge', 'Edge'): 50.0,
+        ('Edge', 'Fog'): 150.0,
+        ('Fog', 'Edge'): 150.0,
+        ('Edge', 'Cloud'): 350.0,
+        ('Cloud', 'Edge'): 350.0,
+        ('Fog', 'Cloud'): 200.0,
+        ('Cloud', 'Fog'): 200.0,
+        ('Cloud', 'Cloud'): 175.0,
+        ('Fog', 'Fog'): 50.0, 
+    }
+    return DELAYS.get((sender_tier, receiver_tier), 0.0)
+
+
 # Selecting the individual from the population created above
 # The individual consists of the unique partitioning number.
 
@@ -312,36 +352,6 @@ def finding_the_StartEnd_node(graph):
 
 
 def extract_subgraph_info(all_sets_of_subgraphs,k):
-    # # Initialize a dictionary to store the nodes in each subgraph
-    # subgraph_dict = {}
-    # subgh_dict = {} # dict to store the nodes in each subgraph intermediate
-
-
-    # # Iterate over the list of population and extract the nodes and assign them to the correct subgraph
-    # for i, index in enumerate(pop):
-    #     for j, indx in enumerate(pop):
-    #         if index == indx:
-    #             if index not in subgh_dict :
-    #                 subgh_dict[index] = [j]
-    #             elif j not in subgh_dict[index]:
-    #                 subgh_dict[index].append(j)
-
-    # sub_index = 1
-
-    # # Modifies the subgraphs such that the task on raspberry pi, microcontroller are split to different subgraphs so that can be used in the gA for constraints
-
-    # for i, k in subgh_dict.items():
-
-    #     if i == 0:
-    #         for j in k:
-    #             subgraph_dict[sub_index] = [j]
-    #             sub_index += 1
-    #     else:
-    #         subgraph_dict[sub_index] = k
-    #         sub_index += 1
-
-    # return subgraph_dict
-
     subgraph = {}
     
     # Iterate over all subgraph sets
@@ -535,13 +545,6 @@ def load_graph_from_json():
         
         if not node["is_router"]:
             prcr_list.append(node["id"])
-        # # Ensure processor_type is added correctly to the dictionary
-        # if processor_type:
-        #     # Add a dictionary entry for each processor type
-        #     if processor_type not in prcr_dict[number]:
-        #         prcr_dict[number][processor_type] = []
-
-        #     prcr_dict[number][processor_type].append(node["id"])
 
     # Add edges
     for link in data["platform"]["links"]:
@@ -634,8 +637,7 @@ def generate_processor_paths(processor_nd_pltfm, G, k):
     PathDict = cfg.path_info + "/paths_file.json" 
     # FIX: Use platform-specific paths file to avoid overwriting when switching platforms
     # Extract platform number from cfg.file_name (e.g., T2_var_001 -> 2, T20 -> 20)
-    import re
-    match = re.match(r'[Tt](\d+)', cfg.file_name)  # Match T followed by digits
+    match = re.match(r'[Tt](\d+)_', cfg.file_name)  # Match T#_var format only
     if match:
         platform_num = match.group(1)
         MergedPath = cfg.path_info + f"/Paths_{platform_num}.json"
@@ -654,117 +656,48 @@ def generate_processor_paths(processor_nd_pltfm, G, k):
 # Function to find the path mapping , Maps tasks to processors.
     # Updates the message list to include the assigned path index for communication between processors.
     
-# def ComputeMappingsAndPathsGlobal(message_list, tasks, processors, message_orderings, path_indices):
-#     # Create a deep copy of the message list to avoid modifying the original
-#     message_list_copy = deepcopy(message_list)
-    
-#     #print("message_orderings",message_orderings)
-#     # Create a dictionary that maps task IDs to processor IDs
-#     task_to_processor = {task: processors[i] for i, task in enumerate(tasks)}
-#     #print("task_to_processor",task_to_processor)
-#     # Container for the updated message list
-#     updated_message_list = []
-
-#     # Map message orderings to their respective path indices
-#     message_to_path_mapping = {message_orderings[i]: path_indices[i] for i in range(len(message_orderings))}
-#     #print("message_to_path_mapping",message_to_path_mapping)
-#     for message in message_list_copy:
-#         # Find the path index corresponding to the message ID
-#         path_index = message_to_path_mapping.get(message['id'], None)
-
-#         # If sender and receiver are on the same processor, set path_index to 0 (self-loop)
-#         if task_to_processor[message['sender']] == task_to_processor[message['receiver']]:
-#             path_index = 0
-
-    
-
-#         # Create an updated message structure with the assigned path index
-#         updated_message = {
-#             'id': message['id'],
-#             'sender': task_to_processor[message['sender']],  # Map sender task to processor
-#             'receiver': task_to_processor[message['receiver']],  # Map receiver task to processor
-#             'size': message['size'],  # Retain message size
-#             'path_index': path_index  # Add path index for communication
-#         }
-
-#         # Append the updated message to the list
-#         updated_message_list.append(updated_message)
-
-#     return updated_message_list
-
-
 def ComputeMappingsAndPathsGlobal(
     message_list, tasks, processors, message_orderings, path_indices, partition, layer, selected_individual, extracted_tuples, subgraphinfo):
     """
     Computes mappings and paths for a global scheduling problem by updating message paths based on task and processor mappings.
-
-    Args:
-        message_list (list): List of messages with sender, receiver, and size information.
-        tasks (list): List of task IDs.
-        processors (list): List of processor IDs allocated to tasks.
-        message_orderings (list): Orderings of messages.
-        path_indices (list): Path indices corresponding to partitions.
-        partition (list): List of partitions.
-        layer (list): List of layers in the architecture.
-        selected_individual (dict): Details of the selected individual (specific mapping).
-        extracted_tuples (list): Filtered (sender, receiver) tuples.
-        subgraphinfo (dict): Mapping of partitions to tasks.
-
-    Returns:
-        list: Updated list of filtered messages with assigned path indices and updated structure.
     """
     # Create a deep copy of the message list to avoid modifying the original
     message_list_copy = deepcopy(message_list)
 
-    # Debugging print statements
-    # print("Processor Allocation:", processors)
-    # print("Tasks:", tasks)   
-    # print("Message Orderings:", message_orderings)
-    # print("Path Indices:", path_indices)  
-    # print("Partition:", partition)
-    # print("Layer:", layer)
-    # print("Selected Individual:", selected_individual)
-
     # Map tasks to processors
     task_to_processor = {task: processors[i] for i, task in enumerate(tasks)}
-    # print("Task to Processor Mapping:", task_to_processor)
 
     # Filter messages based on extracted tuples
+    extracted_tuple_set = set(extracted_tuples)
     filtered_messages = [
         message for message in message_list_copy
-        if (message['sender'], message['receiver']) in extracted_tuples
+        if (message['sender'], message['receiver']) in extracted_tuple_set
     ]
-    # print("Filtered Messages:", filtered_messages)
 
-    # Map partitions to path indices
+    # Map partitions to path indices (not directly used here, but kept for context)
     message_to_path_mapping = {
         partition[i]: path_indices[i] for i in range(len(partition))
     }
-    # print("Message to Path Mapping:", message_to_path_mapping)
 
-    # # Map tasks to partitions for quick lookup
+    # Map tasks to partitions for quick lookup
     task_to_partition = {}
     for partition_key, tasks_in_partition in subgraphinfo.items():
         
         for task in tasks_in_partition:
             task_to_partition[task] = partition_key
-    # print("Task to Partition Mapping:", task_to_partition)
+            
     # Updated message list with path index
     updated_message_list = []
 
     for message in filtered_messages:
         sender = message['sender']
         receiver = message['receiver']
-        # print("Sender:", sender)
-        # print("Receiver:", receiver)
+        
         # Find the partition for the sender
         partition = task_to_partition.get(sender)
-        # print("Partition for Sender:", partition)   
-        # if partition is not None:
-            # Get the path index for the partition
+        
+        # Get the path index for the partition (this determines the path choice pool)
         path_index = message_to_path_mapping.get(partition, None)
-        # else:
-            # path_index = None  # Handle cases where the partition is not found
 
         # Check if the sender and receiver are on the same processor
         if task_to_processor[sender] == task_to_processor[receiver]:
@@ -778,8 +711,6 @@ def ComputeMappingsAndPathsGlobal(
             'size': message['size'],  # Retain message size
             'path_index': path_index  # Add path index for communication
         }
-        # print("Updated Message:", updated_message)
-        # Append the updated message to the list
         updated_message_list.append(updated_message)
 
     return updated_message_list
@@ -790,13 +721,6 @@ def find_suitable_pathsGlobal(updated_message_list, merged_paths_dict):
     """
     Finds suitable paths for messages and returns a dictionary where the sender is the key, 
     and the value is a list containing the receiver and the selected path ID.
-
-    Args:
-        updated_message_list (list): List of message dictionaries, each containing 'sender', 'receiver', and 'path_index'.
-        merged_paths_dict (dict): Dictionary of precomputed paths with path IDs as keys and details including 'path'.
-
-    Returns:
-        dict: Dictionary with sender as keys and values as lists [receiver, path_id].
     """
     # Container for selected paths
     selected_path = {}
@@ -820,25 +744,30 @@ def find_suitable_pathsGlobal(updated_message_list, merged_paths_dict):
                 (path[0] == receiver and path[-1] == sender)) and pid.endswith(path_index_str):
                 valid_path_ids.add(pid)
 
-        # Select a valid path ID if found; otherwise, use None
+        # Select a valid path ID if found; otherwise, use '00' (empty path cost 0)
         path_id = next(iter(valid_path_ids), '00')
-        comm_cst = merged_paths_dict[path_id]['cost']
-        # Add to the dictionary with sender as the key and [receiver, path_id] as the value
-        # BUG FIX: Store actual message size, not cost (cost = comm_cst + size was adding delay to message_size)
-        # The cost should only be used for path selection logic, not stored in schedule
         
-        selected_path[idx] = [sender, receiver, path_id, size]  # Store SIZE not COST
+        # Add to the dictionary with sender as the key and [receiver, path_id, size] as the value
+        selected_path[idx] = [sender, receiver, path_id, size] 
         
         idx = idx + 1
     return selected_path
 
+# Function to update the schedule with dependencies (CRITICAL FIX: Uses Tier Delay Model)
 def update_schedule_with_dependencies(data, task_pair, selected_paths,schdiff):
     # Copy data to avoid modifying the original data
     updated_data = {partition: (tasks.copy(), max_time) for partition, (tasks, max_time) in data.items()}
 
 
     # Helper function to recursively update intra-partition dependencies
-    def update_intra_partition(partition, task_id, updated_start_time, updated_end_time,schdiff):
+    def update_intra_partition(partition, task_id, updated_start_time, updated_end_time, schdiff, visited=None):
+        if visited is None:
+            visited = set()
+
+        if task_id in visited:
+            return
+        visited.add(task_id)
+
         for dependent_task_id, task_data in updated_data[partition][0].items():
             if dependent_task_id == task_id:
                 continue
@@ -850,11 +779,11 @@ def update_schedule_with_dependencies(data, task_pair, selected_paths,schdiff):
                     # Update the dependent task's start and end times
                     task_start, task_end = task_data[1], task_data[2]
                     
-
                     new_start_time = max(task_start, updated_end_time)
+                    # FIX: Use calculated communication delay (schdiff)
                     if new_start_time - updated_end_time < schdiff.get(partition, {}).get((task_id, dependent_task_id), 0):
                         new_start_time = updated_end_time + schdiff.get(partition, {}).get((task_id, dependent_task_id), 0) 
-            
+        
                     new_end_time = new_start_time + (task_end - task_start)
                     
                     # Update the task
@@ -863,11 +792,10 @@ def update_schedule_with_dependencies(data, task_pair, selected_paths,schdiff):
                     )
 
                     # Recursively update other tasks
-                    update_intra_partition(partition, dependent_task_id, new_start_time, new_end_time,schdiff)
+                    update_intra_partition(partition, dependent_task_id, new_start_time, new_end_time, schdiff, visited)
+                    # No need to continue loop once dependent task found
 
     # Process task pairs and update their dependencies
-    # FIX: Track which task pairs have been processed to prevent phantom dependencies
-    # The issue: multiple task pairs might map to the same processor pair
     processed_task_pairs = set()
     
     for sender, receiver in task_pair:
@@ -892,60 +820,48 @@ def update_schedule_with_dependencies(data, task_pair, selected_paths,schdiff):
 
         # Fetch sender and receiver task details
         sender_data = updated_data[sender_partition][0].get(sender)
-    
-
         receiver_data = updated_data[receiver_partition][0].get(receiver)
 
         if sender_data and receiver_data:
-            # Extract relevant information from Selected_Paths
             # Find the FIRST path matching this task pair's processors
             for path_key, path_info in selected_paths.items():
                 sender_proc, receiver_proc, path_id, message_size = path_info
                 
                 # Match processors for this task pair
                 if sender_data[0] == sender_proc and receiver_data[0] == receiver_proc:
-                    # Update receiver task start and end time based on message transfer time
-                    message_transfer_time = message_size  # Assuming message size represents transfer time
                     
-                    # BUG FIX: Check if tasks are on the same node first
+                    # --- CRITICAL FIX: Use Tier-Based Delay Model ---
+                    message_transfer_volume = message_size # Traffic volume component
+                    
                     if sender_proc == receiver_proc:
-                        # Same node - no communication delay, task can start immediately after predecessor
-                        inter_start_time = sender_data[2]
-                        # Set message_size to 0 for same-node communication
-                        actual_message_size = 0
-                    # Edge to Edge
-                    elif 11 <= sender_proc <= 99 and 11 <= receiver_proc <= 99: 
-                        inter_start_time = sender_data[2] + message_transfer_time + 50
-                        actual_message_size = message_size
-                    # Edge to Fog or Fog to Edge
-                    elif (11 <= sender_proc <= 99 and 101 <= receiver_proc <= 999) or (101 <= sender_proc <= 999 and 11 <= receiver_proc <= 99):
-                        inter_start_time = sender_data[2] + message_transfer_time + 150
-                        actual_message_size = message_size
-                    # Edge to Cloud or Cloud to Edge 
-                    elif (11 <= sender_proc <= 99 and receiver_proc >= 1001) or (sender_proc >= 1001 and 11 <= receiver_proc <= 99):
-                        inter_start_time = sender_data[2] + message_transfer_time + 350
-                        actual_message_size = message_size
-                    # Cloud to Fog or Fog to Cloud
-                    elif (101 <= sender_proc <= 999 and receiver_proc >= 1001) or (sender_proc >= 1001 and 101 <= receiver_proc < 999):
-                        inter_start_time = sender_data[2] + message_transfer_time + 200
-                        actual_message_size = message_size
-                    # Cloud to Cloud
-                    elif sender_proc >= 1001 and receiver_proc >= 1001:
-                        inter_start_time = sender_data[2] + message_transfer_time + 175
-                        actual_message_size = message_size
+                        # Case 1: Same Node (Zero Comm Delay)
+                        comm_delay = 0.0
+                        actual_message_size = 0.0 # Set to 0.0 for intra-partition communication in schedule output
                     else:
-                        inter_start_time = sender_data[2] + message_transfer_time
-                        actual_message_size = message_size
-
-                     
+                        # Case 2: Different Nodes (Tier-based fixed delay + message volume)
+                        sender_tier = get_tier_from_node_id(sender_proc)
+                        receiver_tier = get_tier_from_node_id(receiver_proc)
+                        
+                        fixed_delay = get_inter_tier_delay(sender_tier, receiver_tier)
+                        
+                        comm_delay = message_transfer_volume + fixed_delay
+                        actual_message_size = message_size # Preserve original size for tracking
+                    
+                    # Calculate receiver start time
+                    inter_start_time = sender_data[2] + comm_delay # Sender End + Total Delay
+                    
+                    # Resolve processor conflict (inter-partition scheduling relies on the assumption
+                    # that the original local schedules handled their own processor non-overlap, 
+                    # but inter-partition dependencies might push tasks later)
                     receiver_start_time = max(receiver_data[1], inter_start_time)
                     receiver_end_time = receiver_start_time + (receiver_data[2] - receiver_data[1])
                     
+                    # Update receiver schedule entry
                     updated_data[receiver_partition][0][receiver] = (
                         receiver_data[0], receiver_start_time, receiver_end_time, receiver_data[3] + [(sender, path_id, actual_message_size)]
                     )
                     # Recursively update intra-partition tasks
-                    update_intra_partition(receiver_partition, receiver, receiver_start_time, receiver_end_time,schdiff)
+                    update_intra_partition(receiver_partition, receiver, receiver_start_time, receiver_end_time, schdiff)
                     
                     # Break after finding the first matching path for this task pair
                     # This prevents using multiple paths for the same dependency
@@ -956,9 +872,11 @@ def update_schedule_with_dependencies(data, task_pair, selected_paths,schdiff):
     # Ensure tasks without dependencies have start_time = 0
     for partition, (tasks, _) in updated_data.items():
         for task_id, task_data in tasks.items():
-            if task_data[3] == []:  # No dependencies
+            if not task_data[3]:  # No dependencies
+                # Calculate duration (End - Start)
+                duration = task_data[2] - task_data[1]
                 updated_data[partition][0][task_id] = (
-                    task_data[0], 0, task_data[2] - task_data[1], task_data[3]
+                    task_data[0], 0, duration, task_data[3]
                 )
 
     # FIX: Resolve processor conflicts - serialize tasks on the same processor across partitions
@@ -981,9 +899,8 @@ def update_schedule_with_dependencies(data, task_pair, selected_paths,schdiff):
         # Detect and fix overlaps - multiple passes to handle chains
         max_iterations = len(sorted_tasks) * 2  # Safety limit
         iteration = 0
-        changes_made = True
         
-        while changes_made and iteration < max_iterations:
+        while iteration < max_iterations: # Changed from while changes_made, relying on max_iterations
             changes_made = False
             iteration += 1
             
@@ -992,14 +909,15 @@ def update_schedule_with_dependencies(data, task_pair, selected_paths,schdiff):
                 partition_j, task_id_j, start_j, end_j, deps_j = sorted_tasks[i + 1]
                 
                 # Check for overlap: task i ends after task j starts
-                if end_i > start_j:
+                # Add epsilon for boundary handling
+                if end_i > start_j + 1e-6: 
                     # Overlap detected - push task j to start after task i ends
                     duration_j = end_j - start_j
                     new_start_j = end_i  # Start right after task i ends
                     new_end_j = new_start_j + duration_j
                     
                     # Only update if this actually changes the schedule
-                    if new_start_j != start_j:
+                    if abs(new_start_j - start_j) > 1e-6:
                         # Update task j in the schedule
                         updated_data[partition_j][0][task_id_j] = (processor, new_start_j, new_end_j, deps_j)
                         
@@ -1010,220 +928,125 @@ def update_schedule_with_dependencies(data, task_pair, selected_paths,schdiff):
                         update_intra_partition(partition_j, task_id_j, new_start_j, new_end_j, schdiff)
                         
                         changes_made = True
+            
+            if not changes_made and iteration > 1: # Only stop if no changes made after first pass
+                break
+            elif iteration == max_iterations:
+                # print(f"WARNING: Processor {processor} conflict resolution hit max iterations.")
+                break
 
     return updated_data
 
+def globalMakespan(partition_maxtime_Pair):
+    """
+    Calculates the global makespan from a dictionary of partition makespans.
 
+    Args:
+        partition_maxtime_Pair (dict): A dictionary where keys are partition IDs
+                                       and values are the makespans of those partitions.
 
-# Function to remove duplicates from the schedule
+    Returns:
+        float: The maximum makespan among all partitions, representing the global makespan.
+    """
+    if not partition_maxtime_Pair:
+        return 0
+    return max(partition_maxtime_Pair.values())
+
 def remove_duplicates_from_schedule(schedule):
-    for key, value in schedule.items():
-        # Extract the dictionary and the last value (float) from the tuple
-        inner_dict, last_value = value
-        # Iterate through the inner dictionary
-        for inner_key, inner_value in inner_dict.items():
-            # Extract the tuple (containing the list of items)
-            inner_tuple = inner_value
-            # Remove duplicates from the list using a set
-            unique_list = list({tuple(item) for item in inner_tuple[3]})
-            # Update the inner tuple with the unique list
-            inner_dict[inner_key] = (inner_tuple[0], inner_tuple[1], inner_tuple[2], unique_list)
-    return schedule
+    """
+    Removes duplicate tasks from a schedule dictionary, keeping the entry with the highest end time.
+    """
+    if not isinstance(schedule, dict):
+        return schedule
 
+    cleaned_schedule = {}
+    for partition_id, schedule_content in schedule.items():
+        # Handle two possible formats: (task_dict, makespan) or just task_dict
+        if isinstance(schedule_content, tuple) and len(schedule_content) == 2:
+            task_dict, makespan = schedule_content
+        else:
+            task_dict = schedule_content
+            makespan = 0  # Or calculate if needed
 
-# Function to update the partition times (schedule max time) in schedule 
-def update_schedule_times(data):
-    # New dictionary to store partition and their maximum times
-    max_times = {}
-    
-    for partition, (tasks, max_time) in data.items():
-        # Handle empty schedules (failed partitions)
-        if not tasks:
-            max_end_time = 999999.0  # High penalty for failed schedule
+        final_tasks = {}
+        if isinstance(task_dict, dict):
+            for task_id, details in task_dict.items():
+                if task_id not in final_tasks or details[2] > final_tasks[task_id][2]:
+                    final_tasks[task_id] = details
+        
+        # Recalculate makespan based on the cleaned tasks
+        if final_tasks:
+            makespan = max(details[2] for details in final_tasks.values())
+
+        cleaned_schedule[partition_id] = (final_tasks, makespan)
+
+    return cleaned_schedule
+
+def update_schedule_times(schedule):
+    """
+    Recalculates the makespan for each partition in the schedule based on the maximum task end time.
+
+    Args:
+        schedule (dict): The schedule dictionary, where keys are partition IDs and values
+                         are tuples of (task_dict, old_makespan).
+
+    Returns:
+        tuple: A tuple containing:
+            - dict: The updated schedule with corrected makespans.
+            - dict: A dictionary mapping each partition ID to its new makespan.
+    """
+    if not isinstance(schedule, dict):
+        return schedule, {}
+
+    updated_schedule = {}
+    partition_maxtime_pair = {}
+
+    for partition_id, content in schedule.items():
+        if isinstance(content, tuple) and len(content) == 2:
+            task_dict, _ = content
+        else:
+            task_dict = content
+
+        if not task_dict or not isinstance(task_dict, dict):
+            new_makespan = 0
         else:
             # Find the maximum end time among all tasks in the partition
-            max_end_time = max(task_data[2] for task_data in tasks.values())
-        
-        # Update the partition's max time in the original dictionary
-        data[partition] = (tasks, max_end_time)
-        
-        # Add the maximum time to the new dictionary
-        max_times[partition] = max_end_time
-    
-    return data, max_times
+            max_end_time = 0
+            for task_details in task_dict.values():
+                if task_details[2] > max_end_time:
+                    max_end_time = task_details[2]
+            new_makespan = max_end_time
 
-def globalMakespan(data):
+        updated_schedule[partition_id] = (task_dict, new_makespan)
+        partition_maxtime_pair[partition_id] = new_makespan
+
+    return updated_schedule, partition_maxtime_pair
+
+def update_individual(adjacency_matrix, subGraphInfo, constrained_task, task_can_run_info):
     """
-    Finds the maximum value in a dictionary and returns the key and value.
+    Re-evaluates and updates the subgraph information, particularly for handling non-improving solutions in a GA.
+    This function can be adapted to re-run partitioning or scheduling based on the provided context.
+    
+    For now, it returns the subGraphInfo unchanged, acting as a placeholder.
+    A more complex implementation could involve re-running scheduling for each subgraph.
+    """
+    # Placeholder implementation: returns the original subGraphInfo without modification.
+    # This allows the GA to proceed without crashing, though it doesn't add new exploratory behavior.
+    # A more advanced version could re-run list scheduling for each partition.
+    return subGraphInfo
 
-    Parameters:
-        data (dict): The dictionary with numeric values.
+def convert_partition_to_task_list(subGraphInfo):
+    """
+    Converts a dictionary of partitions (subGraphInfo) into a single, ordered list of tasks.
+
+    Args:
+        subGraphInfo (dict): A dictionary where keys are partition IDs and values are lists of task IDs.
 
     Returns:
-        tuple: A tuple containing the key with the maximum value and the maximum value itself.
+        list: A single list containing all task IDs from the partitions, ordered by partition ID.
     """
-    if not data:
-        # No partitions - return high penalty
-        return 999999.0
-    max_partition = max(data, key=data.get)  # Key with the maximum value
-    max_value = data[max_partition]         # Maximum value
-    return max_value
-
-# # Function to update the individual (partition) by moving tasks between subgraphs to optimisie it further
-# def update_individual(connectivity_matrix, subgraphinfo,constrained_task,task_can_run_info):
-#     # print("Subgraph Info Before updation :", subgraphinfo)
-#     duplicated_subgraphinfo = deepcopy(subgraphinfo)  # Save the original state of subgraphinfo
-#     print("Subgraph Info Before updation :", duplicated_subgraphinfo)
-#      # Loop to iterate and mutate tasks
-#     while True:
-#         # Select a random key (subgraph)
-#         random_key = random.choice(list(subgraphinfo.keys()))
-
-#         # Check if the selected subgraph has no tasks (empty list), continue if empty
-#         if not subgraphinfo[random_key]:
-#             continue  # Skip empty subgraphs
-
-#         # Select a random task from the selected subgraph
-#         tasks_in_subgraph = random.choice(subgraphinfo[random_key])
-
-#         if tasks_in_subgraph in constrained_task:
-#             a = 0
-#             continue  # Continue to find another task, skipping the current one as constrained task moving to different partition is not allowed
-       
-
-#         # Find adjacent tasks of the selected task based on the connectivity matrix
-#         adjacent_tasks = [i for i, val in enumerate(connectivity_matrix[tasks_in_subgraph]) if val == 1]
-
-#         if adjacent_tasks:
-#             # Choose a random adjacent task from the list of adjacent tasks
-#             random_adjacent_task = random.choice(adjacent_tasks)
-#             can_run_adjacent_task = task_can_run_info[random_adjacent_task]
-#             can_run_task_in_subgraph = task_can_run_info[tasks_in_subgraph]
-
-#             if any(task in can_run_task_in_subgraph for task in can_run_adjacent_task):
-#             # Add the adjacent task to the same or a different subgraph
-#                 task_added = False
-#                 for key, value in subgraphinfo.items():
-#                     if random_adjacent_task in value:
-#                         # Move the task to the new subgraph and remove it from the old one
-#                         subgraphinfo[key].append(tasks_in_subgraph)  # Move task to the new subgraph
-#                         subgraphinfo[random_key].remove(tasks_in_subgraph)  # Remove it from the old subgraph
-#                         task_added = True
-#                         break
-
-#             # Exit after one iteration as adjacent task has been handled
-#             if task_added:
-#                 break
-#         else:
-#             # No adjacent tasks were found, look for an empty subgraph
-#             empty_subgraph_key = None
-#             for key, value in subgraphinfo.items():
-#                 if not value:  # If a subgraph is empty
-#                     empty_subgraph_key = key
-#                     # print("empty_subgraph_key:", empty_subgraph_key)
-#                     break
-
-#             if empty_subgraph_key is not None:
-#                 # If an empty subgraph is found, assign the task to it
-#                 subgraphinfo[empty_subgraph_key] = [tasks_in_subgraph]  # Assign the task to the empty subgraph
-#                 subgraphinfo[random_key].remove(tasks_in_subgraph)  # Remove it from the old subgraph
-#                 # print("Subgraph Info After updation of empty key:", subgraphinfo)
-
-#             else:
-#                 a = 1
-#                 continue  # Skip if no empty subgraphs are found
-#             break
-#     if subgraphinfo == duplicated_subgraphinfo:
-#         print("Same as original")
-
-#     print("Subgraph Info After updation:", subgraphinfo)
-#     return subgraphinfo
-
-
-
-
-def update_individual(connectivity_matrix, subgraphinfo, constrained_task, task_can_run_info):
-    duplicated_subgraphinfo = deepcopy(subgraphinfo)  # Save the original state
-    #print("Subgraph Info Before updation:", duplicated_subgraphinfo)
-    max_attempts = cfg.MAX_attempts  # Maximum number of attempts to avoid infinite loop
-    attempts = 0  # Track the number of attempts
-
-    while attempts < max_attempts:
-        attempts += 1  # Increment attempt count
-
-        # Select a random key (subgraph)
-        random_key = random.choice(list(subgraphinfo.keys()))
-
-        # If the selected subgraph is empty, try again
-        if not subgraphinfo[random_key]:
-            continue
-
-        # Select a random task from the subgraph
-        tasks_in_subgraph = random.choice(subgraphinfo[random_key])
-
-        # Skip if task is constrained
-        if tasks_in_subgraph in constrained_task:
-            continue
-
-        # Find adjacent tasks
-        adjacent_tasks = [i for i, val in enumerate(connectivity_matrix[tasks_in_subgraph]) if val == 1]
-
-        if adjacent_tasks:
-            # Choose a random adjacent task
-            random_adjacent_task = random.choice(adjacent_tasks)
-            can_run_adjacent_task = task_can_run_info[random_adjacent_task]
-            can_run_task_in_subgraph = task_can_run_info[tasks_in_subgraph]
-
-            if any(task in can_run_task_in_subgraph for task in can_run_adjacent_task):
-                # Try to move task to an adjacent task’s subgraph
-                task_added = False
-                for key, value in subgraphinfo.items():
-                    if random_adjacent_task in value:
-                        subgraphinfo[key].append(tasks_in_subgraph)  # Move task
-                        subgraphinfo[random_key].remove(tasks_in_subgraph)  # Remove from original
-                        task_added = True
-                        break
-
-                if task_added:
-                    break  # Exit loop after a successful move
-
-        # If no valid adjacent task found, try moving it to an empty subgraph
-        empty_subgraph_key = next((key for key, value in subgraphinfo.items() if not value), None)
-
-        if empty_subgraph_key is not None:
-            subgraphinfo[empty_subgraph_key] = [tasks_in_subgraph]
-            subgraphinfo[random_key].remove(tasks_in_subgraph)
-            break  # Exit loop after assignment
-
-    # if attempts >= max_attempts:
-    #     print("Max attempts reached, stopping to avoid infinite loop.")
-
-    # if subgraphinfo == duplicated_subgraphinfo:
-    #     print("Same as original, no changes made.")
-
-    # print("Subgraph Info After updation:", subgraphinfo)
-    return subgraphinfo
-
-
-def convert_partition_to_task_list(partition_dict):
-    """
-    Converts a partition dictionary to a list where each task's index corresponds to its partition ID.
-
-    Parameters:
-        partition_dict (dict): A dictionary where keys are partition IDs and values are lists of tasks.
-
-    Returns:
-        list: A list where each index represents a task, and the value at that index is the partition ID.
-    """
-    # Find the maximum task number to determine the list size
-    max_task = max(task for tasks in partition_dict.values() for task in tasks)
-    
-    # Initialize a list with size equal to the maximum task number + 1
-    task_list = [-1] * (max_task + 1)
-    
-    # Populate the task_list with partition IDs
-    for partition_id, tasks in partition_dict.items():
-        for task in tasks:
-            task_list[task] = partition_id
-    
+    task_list = []
+    # Sort by partition ID to ensure deterministic order
+    for partition_id in sorted(subGraphInfo.keys()):
+        task_list.extend(subGraphInfo[partition_id])
     return task_list
