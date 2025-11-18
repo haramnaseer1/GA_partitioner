@@ -18,10 +18,11 @@ import argparse
 
 # Reading the application model from the json file
 
-file_name = cfg.file_name
+# FIX: Don't cache file_name - read from cfg.file_name directly to pick up command line changes
+# file_name = cfg.file_name
 
 def read_application_model():
-    with open(os.path.join(cfg.app_dir_path, file_name)) as f:
+    with open(os.path.join(cfg.app_dir_path, cfg.file_name)) as f:
         app_model = json.load(f)
     return app_model
 

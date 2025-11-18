@@ -80,7 +80,12 @@ def main_file(client):
     constrained_task_copy = []
     
     if cfg.operating_mode == "constrain":
-        modified_graph, constrained_task = af.remove_constrained_task_from_graph(graph, node_job_mapping) 
+        print(f"[DEBUG] Graph before constraint removal: {graph.number_of_nodes()} nodes")
+        print(f"[DEBUG] Graph nodes: {list(graph.nodes())}")
+        modified_graph, constrained_task = af.remove_constrained_task_from_graph(graph, node_job_mapping)
+        print(f"[DEBUG] Removed constrained tasks: {constrained_task}")
+        print(f"[DEBUG] Graph after constraint removal: {modified_graph.number_of_nodes()} nodes")
+        print(f"[DEBUG] Remaining nodes: {list(modified_graph.nodes())}") 
         constrained_task_copy = constrained_task.copy()
         all_sets_of_subgraphs = pt.run_multiple_times_constrainmode(modified_graph, cfg.num_runs,constrained_task) # Running the multiple times to get the subgraphs
         

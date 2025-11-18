@@ -43,10 +43,13 @@ def dfs(graph, start_node, current_run, current_part):
         node = stack.pop()
         if node not in visited:
             visited.append(node)
+            # FIX: Traverse both successors AND predecessors to capture full connected component
+            # This ensures isolated nodes and backward dependencies are included
             stack.extend(graph.successors(node))
+            stack.extend(graph.predecessors(node))
             subgraph[dict_key1].append(node)
 
-            # Extract edges and connections
+            # Extract edges and connections (only outgoing edges)
             for neighbor in graph.successors(node):
                 edge = (node, neighbor)
                 subgraph[dict_key2].append(edge)
@@ -69,6 +72,9 @@ def generate_subgraphs(graph, current_run):
     max_iterations = len(graph.nodes()) + 10  # Safety limit to prevent infinite loops
     iterations = 0
     
+    total_nodes = len(graph.nodes())
+    print(f"[Partitioning] Starting with {total_nodes} nodes to partition")
+    
     while graph.nodes() and iterations < max_iterations:
         iterations += 1
         current_part =current_part+1
@@ -76,15 +82,22 @@ def generate_subgraphs(graph, current_run):
         nodes_by_degree = sorted(graph.nodes(), key=lambda n: graph.out_degree(n) + graph.in_degree(n), reverse=True)
         random_start_node = nodes_by_degree[0] if nodes_by_degree else random.choice(list(graph.nodes()))
         
+        print(f"[Partitioning] Iteration {iterations}, starting from node {random_start_node}, {len(graph.nodes())} nodes remaining")
+        
         result_subgraph,key1,key2 = dfs(graph, random_start_node,current_run,current_part)
         if not result_subgraph[key1]:
             break # Break if no nodes are found in the result.
+        
+        print(f"[Partitioning] Created partition {current_part} with {len(result_subgraph[key1])} nodes: {result_subgraph[key1]}")
+        
         graph.remove_nodes_from(result_subgraph[key1])
         subgraphs.append(result_subgraph)
     
     # Safety check: if graph still has nodes, something went wrong
     if graph.nodes():
-        print(f"WARNING: {len(graph.nodes())} nodes not partitioned!")
+        print(f"WARNING: {len(graph.nodes())} nodes not partitioned: {list(graph.nodes())}")
+    else:
+        print(f"[Partitioning] SUCCESS: All {total_nodes} nodes partitioned into {len(subgraphs)} partition(s)")
     
     return subgraphs
 
@@ -104,6 +117,10 @@ def generate_subgraphs_constrainmode(graph, current_run,con_g):
     current_part =0 # Current partition number
     max_iterations = len(graph.nodes()) + len(con_g.nodes()) + 10
     iterations = 0
+    
+    total_unconstrained = len(graph.nodes())
+    total_constrained = len(con_g.nodes())
+    print(f"[Constrain Mode] Starting with {total_unconstrained} unconstrained + {total_constrained} constrained = {total_unconstrained + total_constrained} total nodes")
     
     while (con_g.nodes() or graph.nodes()) and iterations < max_iterations:
         iterations += 1
@@ -127,15 +144,23 @@ def generate_subgraphs_constrainmode(graph, current_run,con_g):
             nodes_by_degree = sorted(graph.nodes(), key=lambda n: graph.out_degree(n) + graph.in_degree(n), reverse=True)
             random_start_node = nodes_by_degree[0] if nodes_by_degree else random.choice(list(graph.nodes()))
             
+            print(f"[Constrain Mode] Unconstrained partition {current_part}, starting from node {random_start_node}, {len(graph.nodes())} nodes remaining")
+            
             result_subgraph,key1,key2 = dfs(graph, random_start_node,current_run,current_part)
             if not result_subgraph[key1]:
                 break # Break if no nodes are found in the result.
+            
+            print(f"[Constrain Mode] Created unconstrained partition {current_part} with {len(result_subgraph[key1])} nodes: {result_subgraph[key1]}")
+            
             graph.remove_nodes_from(result_subgraph[key1])
             subgraphs.append(result_subgraph)
     
     # Safety check
     if graph.nodes() or con_g.nodes():
-        print(f"WARNING: {len(graph.nodes()) + len(con_g.nodes())} nodes not partitioned!")
+        remaining = list(graph.nodes()) + list(con_g.nodes())
+        print(f"WARNING: {len(remaining)} nodes not partitioned: {remaining}")
+    else:
+        print(f"[Constrain Mode] SUCCESS: All {total_unconstrained + total_constrained} nodes partitioned into {len(subgraphs)} partition(s)")
     
     return subgraphs
 

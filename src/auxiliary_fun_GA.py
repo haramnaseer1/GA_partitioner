@@ -211,16 +211,27 @@ def combine_subgraphs(pats,lr, com_fldr, sub_fldr):
 # (nodes that is only found in edge layers) (Raspberry Pi, Micro-Controller) before partitioning.
 
 def remove_constrained_task_from_graph(graph, node_job_mapping):
-    # Create a deep copy of the original graph
+    # Create a list to store tasks that can ONLY run on edge devices (Raspberry Pi or Microcontroller)
+    # FIX: Only remove tasks that are EXCLUSIVELY constrained to edge devices (3 or 4)
+    # Don't remove tasks that CAN run on edge devices but also have other options
     task_ids = []
-    for k in node_job_mapping.keys():
-        if k in [3,4]:  # Check for specific keys (Raspberry Pi, Micro-Controller)
-            for task_id in node_job_mapping[k]:
-                # Add task only if it's not already in the list
-                if task_id not in task_ids:
-                    task_ids.append(task_id)
+    
+    # Invert the mapping: task_id -> list of resources it can run on
+    task_to_resources = {}
+    for resource_id, tasks in node_job_mapping.items():
+        for task_id in tasks:
+            if task_id not in task_to_resources:
+                task_to_resources[task_id] = []
+            task_to_resources[task_id].append(resource_id)
+    
+    # Only remove tasks that can ONLY run on edge devices (resources 3 or 4)
+    for task_id, resources in task_to_resources.items():
+        # Check if task can ONLY run on edge devices (no other options)
+        edge_only = all(r in [3, 4] for r in resources)
+        if edge_only and task_id not in task_ids:
+            task_ids.append(task_id)
+    
     # Remove the specified task nodes from the modified graph
-
     graph.remove_nodes_from(task_ids)
 
     return graph, task_ids
