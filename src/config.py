@@ -18,7 +18,7 @@ file_name = 'T2.json'  # Change the file name to the desired application model n
 # ---------------------- Setting the DEBUG_MODE ----------------------
 # Setting the DEBUG_MODE
 
-DEBUG_MODE = False  # Change to False to deactivate debug mode
+DEBUG_MODE = False  # Change to False to deactivate debug mode (FULL ITERATIONS FOR GNN TRAINING DATA)
 
 # --------------------------------------------------------------------
 
@@ -57,8 +57,10 @@ last_known_time =    1740397401.2023108 # Last known time for the platform model
 POPULATION_SIZE_GGA = 20 if not DEBUG_MODE else 3  # Population Size for Global Genetic Algorithm
 POPULATION_SIZE_LGA = 10 if not DEBUG_MODE else 3  # Population Size for Local Genetic Algorithm
 
-NUMBER_OF_GENERATIONS_GCA = 100 if not DEBUG_MODE else 5  # Generations for Global Genetic Algorithm
-NUMBER_OF_GENERATIONS_LGA = 50 if not DEBUG_MODE else 5  # Generations for Local Genetic Algorithm
+# For GNN training data: balanced iterations (complete solutions, reasonable time)
+# TEMPORARY: Reduced for quick testing (1 hour time limit) - restore to 50/30 for production
+NUMBER_OF_GENERATIONS_GCA = 10
+NUMBER_OF_GENERATIONS_LGA = 10
 
 MUTATION_PROBABILITY_GGA = 0.4
 MUTATION_PROBABILITY_LGA = 0.4

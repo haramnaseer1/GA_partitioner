@@ -6,6 +6,7 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import json
 import os
+import re
 from collections import defaultdict
 from decimal import Decimal
 from random import randint, sample
@@ -75,6 +76,9 @@ def main_file(client):
     rsc_mapping = af.resource_mapping() # Resource Mapping
     node_job_mapping = af.map_job_ids_to_nodes(AM)   # Mapping the job ids to the nodes in which it can run on with the help of the json data of application model
 
+    constrained_task = []  # Initialize empty for nonconstrain mode
+    constrained_task_copy = []
+    
     if cfg.operating_mode == "constrain":
         modified_graph, constrained_task = af.remove_constrained_task_from_graph(graph, node_job_mapping) 
         constrained_task_copy = constrained_task.copy()
@@ -161,16 +165,26 @@ def main_file(client):
 
     # Find the last modified time of the platform model json file
     # Detect platform number from application filename
-    import re
-    match = re.match(r'[Tt](\d+)_', cfg.file_name)
+    # (re and os already imported at module level)
+    match = re.match(r'[Tt](\d+)_', cfg.file_name)  # Match T#_var format only
     if match:
         platform_num = match.group(1)
         platform_file = f"{platform_num}_Platform.json"
     else:
-        platform_file = "3_Tier_Platform.json"
+        # Fallback for non-standard names (use Platform 5)
+        platform_file = "5_Platform.json"
+        if not os.path.exists(os.path.join(cfg.platform_dir_path, platform_file)):
+            platform_file = "3_Platform.json"
     
     # Check if path info file exists (only 3_Tier_Platform.json has path info)
     path_info_file = cfg.path_info + f"/{platform_file}"
+    # FIX: Use platform-specific Paths file to avoid data loss
+    if match:
+        platform_num = match.group(1)
+        paths_json_file = cfg.path_info + f"/Paths_{platform_num}.json"
+    else:
+        paths_json_file = cfg.path_info + "/Paths.json"
+        
     if os.path.exists(path_info_file):
         current_modified_time = os.path.getmtime(path_info_file)
     else:
@@ -197,7 +211,8 @@ def main_file(client):
 
     if current_modified_time == cfg.last_known_time:
         # print(" Platform has not been modified.")
-        with open(cfg.path_info + "/Paths.json") as f:
+        # FIX: Load platform-specific paths file
+        with open(paths_json_file) as f:
             merged_path_dict = json.load(f)
     else:
         # print("Platform has been modified.")

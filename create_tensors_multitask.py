@@ -13,13 +13,17 @@ from pathlib import Path
 import glob
 from torch_geometric.data import Data
 
-def load_solution(solution_path):
-    """Load a solution JSON file"""
+def load_solution(solution_path, min_tasks=3):
+    """Load a solution JSON file
+    Args:
+        solution_path: Path to solution JSON  
+        min_tasks: Minimum tasks required (default: 3)
+    """
     with open(solution_path, 'r') as f:
         data = json.load(f)
         
-        # Skip empty or invalid solutions
-        if not data or len(data) == 0:
+        # Skip empty or too-small solutions
+        if not data or len(data) < min_tasks:
             return None
         
         # Keep full task data with all fields
@@ -137,9 +141,12 @@ def create_node_labels(solution_tasks, app_data, platform_info):
         torch.tensor(end_labels, dtype=torch.float32)      # Regression target
     )
 
-def solution_to_graph_data(solution_path, app_path, platform_info):
-    """Convert a solution to PyTorch Geometric Data object with multi-task labels"""
-    solution = load_solution(solution_path)
+def solution_to_graph_data(solution_path, app_path, platform_info, min_tasks=3):
+    """Convert a solution to PyTorch Geometric Data object with multi-task labels
+    Args:
+        min_tasks: Minimum tasks required (passed to load_solution)
+    """
+    solution = load_solution(solution_path, min_tasks=min_tasks)
     if solution is None:
         return None  # Skip empty/invalid solutions
     
@@ -186,9 +193,13 @@ def batch_solutions_to_tensors(
     solution_dir='solution', 
     app_dir='Application', 
     output_file='training_data_multitask.pt',
-    platform_path='Path_Information/3_Tier_Platform.json'
+    platform_path='Path_Information/3_Tier_Platform.json',
+    min_tasks=3
 ):
-    """Convert all valid solutions to multi-task training data"""
+    """Convert all valid solutions to multi-task training data
+    Args:
+        min_tasks: Minimum tasks per solution to include
+    """
     
     # Load platform info (shared across all solutions)
     print("Loading platform information...")
@@ -199,8 +210,9 @@ def batch_solutions_to_tensors(
     
     data_list = []
     valid_count = 0
+    skipped_count = 0
     
-    print(f"Converting {len(solution_files)} solution files...\n")
+    print(f"Converting {len(solution_files)} solution files (min_tasks={min_tasks})...\n")
     
     for sol_path in solution_files:
         # Extract application name from solution filename
@@ -213,14 +225,15 @@ def batch_solutions_to_tensors(
         app_path = f'{app_dir}/{app_name}'
         
         if not Path(app_path).exists():
-            print(f"  [SKIP] {Path(sol_path).name}: Application {app_name} not found")
+            skipped_count += 1
             continue
         
         try:
-            data = solution_to_graph_data(sol_path, app_path, platform_info)
+            data = solution_to_graph_data(sol_path, app_path, platform_info, min_tasks=min_tasks)
             
             # Skip invalid/incomplete solutions
             if data is None:
+                skipped_count += 1
                 continue
             
             data_list.append(data)
@@ -246,6 +259,7 @@ def batch_solutions_to_tensors(
         print(f"DATASET CREATED SUCCESSFULLY")
         print(f"{'='*70}")
         print(f"Saved {len(data_list)} graphs to {output_file}")
+        print(f"Skipped {skipped_count} invalid/small solutions")
         print(f"\nDataset Statistics:")
         print(f"  Total tasks: {sum(d.num_nodes for d in data_list)}")
         print(f"  Total dependencies: {sum(d.edge_index.size(1) for d in data_list)}")
@@ -288,6 +302,8 @@ Examples:
                         help='Output file path for training tensors (default: training_data_multitask.pt)')
     parser.add_argument('--platform', type=str, default='Path_Information/3_Tier_Platform.json',
                         help='Platform JSON file path (default: Path_Information/3_Tier_Platform.json)')
+    parser.add_argument('--min-tasks', type=int, default=3,
+                        help='Minimum tasks per solution to include (default: 3)')
     
     args = parser.parse_args()
     
@@ -299,13 +315,15 @@ Examples:
     print(f"  Application dir: {args.app_dir}")
     print(f"  Output file: {args.output}")
     print(f"  Platform file: {args.platform}")
+    print(f"  Min tasks filter: {args.min_tasks}")
     print("\nConverting GA solutions to multi-task training format...\n")
     
     data = batch_solutions_to_tensors(
         solution_dir=args.solution_dir,
         app_dir=args.app_dir,
         output_file=args.output,
-        platform_path=args.platform
+        platform_path=args.platform,
+        min_tasks=args.min_tasks
     )
     
     if data:
