@@ -1,0 +1,37 @@
+{
+    "timestamp": "2025-11-19T00:58:48.630018",
+    "config": {
+        "apps": 8,
+        "seeds": 1,
+        "timeout": 300
+    },
+    "summary": {
+        "valid": 0,
+        "invalid": 5,
+        "failed": 0,
+        "skipped": 3
+    },
+    "invalid_details": [
+        [
+            "T2_var_001_seed0",
+            "Invalid:\nSTDOUT:\n======================================================================\nVALIDATION RESULTS for solution/T2_var_001_ga.json\n======================================================================\nValid: NO\nMakespan: 300191.8333\n\nPrecedence Constraints: FAIL\n \ufffd- Precedence violation: Task 32 -> 34, Required start: 127126.1667, Actual start: 127093.1667. Required delay=33.0000, actual gap=0.0000\n \ufffd- Precedence violation: Task 34 -> 36, Required start: 127661.1667, Actual start: 127601.1667. Required delay=60.0000, actual gap=0.0000\n \ufffd- Precedence violation: Task 95 -> 98, Required start: 286119.9167, Actual start: 286082.9167. Required delay=37.0000, actual gap=0.0000\n \ufffd- Precedence violation: Task 59 -> 60, Required start: 137872.5000, Actual start: 137839.5000. Required delay=33.0000, actual gap=0.0000\n \ufffd- Precedence violation: Task 66 -> 68, Required start: 145570.5000, Actual start: 145539.5000. Required delay=31.0000, actual gap=0.0000\n \ufffd... and 11 more\n\nNon-Overlap Constraints: PASS\n\nEligibility Constraints: PASS\n\nTiming Consistency: PASS\n======================================================================\n\nSTDERR:\n"
+        ],
+        [
+            "T2_var_002_seed0",
+            "Invalid:\nSTDOUT:\n======================================================================\nVALIDATION RESULTS for solution/T2_var_002_ga.json\n======================================================================\nValid: NO\nMakespan: 63039.8333\n\nPrecedence Constraints: FAIL\n \ufffd- Precedence violation: Task 16 -> 21, Required start: 9906.6667, Actual start: 9888.6667. Required delay=18.0000, actual gap=0.0000\n \ufffd- Precedence violation: Task 33 -> 39, Required start: 16824.0000, Actual start: 16778.0000. Required delay=46.0000, actual gap=0.0000\n\nNon-Overlap Constraints: FAIL\n \ufffd- Overlap on processor 21: Task 14 (ends 9234.000000) overlaps with Task 27 (starts 8984.666667)\n\nEligibility Constraints: PASS\n\nTiming Consistency: PASS\n======================================================================\n\nSTDERR:\n"
+        ],
+        [
+            "T2_var_003_seed0",
+            "Invalid:\nSTDOUT:\n======================================================================\nVALIDATION RESULTS for solution/T2_var_003_ga.json\n======================================================================\nValid: NO\nMakespan: 133262.8333\n\nPrecedence Constraints: FAIL\n \ufffd- Precedence violation: Task 8 -> 16, Required start: 70.1667, Actual start: 54.1667. Required delay=16.0000, actual gap=0.0000\n \ufffd- Precedence violation: Task 17 -> 25, Required start: 56599.8333, Actual start: 56567.8333. Required delay=32.0000, actual gap=0.0000\n \ufffd- Precedence violation: Task 38 -> 39, Required start: 129957.5000, Actual start: 129904.5000. Required delay=53.0000, actual gap=0.0000\n\nNon-Overlap Constraints: FAIL\n \ufffd- Overlap on processor 22: Task 9 (ends 24183.333333) overlaps with Task 14 (starts 22323.333333)\n \ufffd- Overlap on processor 26: Task 10 (ends 21567.666667) overlaps with Task 7 (starts 19787.666667)\n\nEligibility Constraints: PASS\n\nTiming Consistency: PASS\n======================================================================\n\nSTDERR:\n"
+        ],
+        [
+            "T2_var_004_seed0",
+            "Invalid:\nSTDOUT:\n======================================================================\nVALIDATION RESULTS for solution/T2_var_004_ga.json\n======================================================================\nValid: NO\nMakespan: 104743.0000\n\nPrecedence Constraints: FAIL\n \ufffd- Precedence violation: Task 29 -> 30, Required start: 102932.6667, Actual start: 102913.6667. Required delay=19.0000, actual gap=0.0000\n\nNon-Overlap Constraints: FAIL\n \ufffd- Overlap on processor 21: Task 34 (ends 102956.000000) overlaps with Task 29 (starts 102607.000000)\n \ufffd- Overlap on processor 25: Task 23 (ends 81767.166667) overlaps with Task 16 (starts 81702.333333)\n\nEligibility Constraints: PASS\n\nTiming Consistency: PASS\n======================================================================\n\nSTDERR:\n"
+        ],
+        [
+            "T2_var_005_seed0",
+            "Invalid:\nSTDOUT:\n======================================================================\nVALIDATION RESULTS for solution/T2_var_005_ga.json\n======================================================================\nValid: NO\nMakespan: 218818.4167\n\nPrecedence Constraints: FAIL\n \ufffd- Precedence violation: Task 21 -> 28, Required start: 29394.3333, Actual start: 29356.3333. Required delay=38.0000, actual gap=0.0000\n \ufffd- Precedence violation: Task 0 -> 6, Required start: 645.3333, Actual start: 623.3333. Required delay=22.0000, actual gap=0.0000\n \ufffd- Precedence violation: Task 6 -> 8, Required start: 2052.0000, Actual start: 2010.0000. Required delay=42.0000, actual gap=0.0000\n \ufffd- Precedence violation: Task 13 -> 16, Required start: 28509.0000, Actual start: 28487.0000. Required delay=22.0000, actual gap=0.0000\n \ufffd- Precedence violation: Task 16 -> 19, Required start: 29163.6667, Actual start: 29113.6667. Required delay=50.0000, actual gap=0.0000\n \ufffd... and 9 more\n\nNon-Overlap Constraints: PASS\n\nEligibility Constraints: PASS\n\nTiming Consistency: PASS\n======================================================================\n\nSTDERR:\n"
+        ]
+    ],
+    "failed_details": []
+}

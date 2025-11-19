@@ -12,10 +12,13 @@ Model architecture mein constraints embedded hain, not just post-processing.
 """
 
 import torch
+torch.autograd.set_detect_anomaly(True)
 import torch.nn as nn
 import torch.nn.functional as F
 from torch_geometric.nn import GATv2Conv, global_mean_pool, global_max_pool
 from torch_geometric.data import Data
+import argparse
+import os
 
 
 class ConstraintAwareGNN(nn.Module):
@@ -33,9 +36,9 @@ class ConstraintAwareGNN(nn.Module):
         self,
         node_feature_dim=3,
         edge_feature_dim=1,
-        hidden_dim=256,
-        num_gat_layers=4,
-        num_heads=8,
+        hidden_dim=128,
+        num_gat_layers=2,
+        num_heads=4,
         num_processors=192,
         dropout=0.2,
         platform_info=None,
@@ -171,48 +174,44 @@ class ConstraintAwareGNN(nn.Module):
         """
         num_nodes = node_features.size(0)
         adjusted_start_times = base_start_times.clone()
-        
+
         if edge_index.size(1) == 0:
             return adjusted_start_times
-        
-        # For each edge (dependency), compute required delay
+
+        # Collect all receiver indices and their new candidate start times
+        receiver_indices = []
+        candidate_starts = []
+
         for i in range(edge_index.size(1)):
             sender_idx = edge_index[0, i]
             receiver_idx = edge_index[1, i]
-            
-            # Get edge features for communication delay
+
             edge_feat = edge_attr[i] if edge_attr is not None else torch.zeros(1)
-            
-            # Predict communication delay based on processor assignments
             sender_feat = node_features[sender_idx]
             receiver_feat = node_features[receiver_idx]
-            
-            # Combine features for delay prediction
             combined = torch.cat([
                 sender_feat,
                 receiver_feat,
                 edge_feat.unsqueeze(0) if edge_feat.dim() == 0 else edge_feat
             ])
-            
             comm_delay = F.relu(self.comm_delay_head(combined.unsqueeze(0)))
-            
-            # Compute expected processor assignments (soft assignment)
             sender_proc_dist = processor_probs[sender_idx]
             receiver_proc_dist = processor_probs[receiver_idx]
-            
-            # Expected end time of sender
             sender_start = base_start_times[sender_idx]
-            # Duration will be computed separately, for now use estimated
             sender_duration = torch.tensor(10.0)  # Placeholder
             sender_end = sender_start + sender_duration
-            
-            # Receiver must start after sender ends + comm delay
             min_receiver_start = sender_end + comm_delay
-            
-            # Update receiver start time (soft constraint via max)
-            adjusted_start_times[receiver_idx] = torch.max(
-                adjusted_start_times[receiver_idx],
-                min_receiver_start
+
+            receiver_indices.append(receiver_idx)
+            candidate_starts.append(min_receiver_start)
+
+        # Out-of-place update: for each receiver, set its start time to max of current and candidate
+        if receiver_indices:
+            receiver_indices_tensor = torch.tensor(receiver_indices, dtype=torch.long)
+            candidate_starts_tensor = torch.cat(candidate_starts).view(-1, 1)
+            adjusted_start_times[receiver_indices_tensor] = torch.max(
+                adjusted_start_times[receiver_indices_tensor],
+                candidate_starts_tensor
             )
         
         return adjusted_start_times
@@ -349,7 +348,7 @@ class ConstraintAwareLoss(nn.Module):
             
             # Violation if receiver starts before sender ends
             violation = F.relu(sender_end - receiver_start)
-            violations += violation
+            violations = violations + violation
         
         return violations / max(data.edge_index.size(1), 1)
     
@@ -376,7 +375,7 @@ class ConstraintAwareLoss(nn.Module):
                     
                     # Overlap if: start_i < end_j AND start_j < end_i
                     overlap = F.relu(torch.min(end_i, end_j) - torch.max(start_i, start_j))
-                    violations += overlap
+                    violations = violations + overlap
                     count += 1
         
         return violations / max(count, 1)
@@ -396,9 +395,9 @@ class ConstraintAwareLoss(nn.Module):
         """
         # Basic prediction losses
         processor_loss = self.processor_loss_fn(outputs['processor'], data.y_processor)
-        start_loss = self.regression_loss_fn(outputs['start_time'].squeeze(), data.y_start)
-        end_loss = self.regression_loss_fn(outputs['end_time'].squeeze(), data.y_end)
-        makespan_loss = self.regression_loss_fn(outputs['makespan'].squeeze(), data.y_makespan)
+        start_loss = self.regression_loss_fn(outputs['start_time'].squeeze(-1), data.y_start)
+        end_loss = self.regression_loss_fn(outputs['end_time'].squeeze(-1), data.y_end)
+        makespan_loss = self.regression_loss_fn(outputs['makespan'].squeeze(-1), data.y_makespan)
         
         # Constraint violation penalties
         precedence_violation = self.compute_precedence_violation(outputs, data)
@@ -434,6 +433,16 @@ def create_constraint_aware_model(**kwargs):
 
 
 if __name__ == '__main__':
+    # Parse command-line arguments
+    parser = argparse.ArgumentParser(description='Train Constraint-Aware GNN Model')
+    parser.add_argument('--data_path', type=str, default='training_data_multitask.pt', 
+                        help='Path to the training data file')
+    parser.add_argument('--output_dir', type=str, default='.', 
+                        help='Directory to save the trained model')
+    parser.add_argument('--epochs', type=int, default=25, 
+                        help='Number of training epochs')
+    args = parser.parse_args()
+
     print("="*70)
     print("CONSTRAINT-AWARE GNN MODEL")
     print("="*70)
@@ -442,4 +451,55 @@ if __name__ == '__main__':
     print("✓ Precedence-aware start time prediction")
     print("✓ Non-overlap penalty in loss")
     print("✓ Duration consistency enforcement")
-    print("\n" + "="*70)
+    print("="*70)
+    print("CONSTRAINT-AWARE GNN MODEL")
+    print("="*70)
+    print("\nModel jo constraints ke saath train hota hai:")
+    print("✓ Eligibility masking in forward pass")
+    print("✓ Precedence-aware start time prediction")
+    print("✓ Non-overlap penalty in loss")
+    print("✓ Duration consistency enforcement")
+
+    # TRAINING LOOP (DEMO)
+    import torch.optim as optim
+    from torch_geometric.loader import DataLoader
+    # Load single multitask tensor file
+    dataset = torch.load(args.data_path, weights_only=False)
+    if not isinstance(dataset, list):
+        dataset = [dataset]
+    loader = DataLoader(dataset, batch_size=1, shuffle=True)
+    model = create_constraint_aware_model()
+    loss_fn = ConstraintAwareLoss()
+    optimizer = optim.Adam(model.parameters(), lr=1e-3)
+    epochs = args.epochs
+    print(f"Training for {epochs} epochs on {len(dataset)} samples...")
+    device = torch.device('cuda')
+    model = model.to(device)
+    for epoch in range(1, epochs+1):
+        model.train()
+        total_loss = 0.0
+        metrics = {'processor':0, 'start':0, 'end':0, 'makespan':0, 'precedence_penalty':0, 'overlap_penalty':0, 'duration_penalty':0}
+        for batch in loader:
+            optimizer.zero_grad()
+            batch = batch.to(device)
+            can_run_on_mask = getattr(batch, 'can_run_on_mask', None)
+            outputs = model(batch, can_run_on_masks=can_run_on_mask, enforce_constraints=True)
+            loss_dict = loss_fn(outputs, batch)
+            loss = loss_dict['total']
+            loss.backward()
+            optimizer.step()
+            total_loss += loss.item()
+            for k in metrics:
+                val = loss_dict[k] if k in loss_dict else 0
+                metrics[k] += val.item() if hasattr(val, 'item') else val
+        n = len(loader)
+        print(f"Epoch {epoch:3d} | Total Loss: {total_loss/n:.4f} | "
+              f"Proc: {metrics['processor']/n:.3f} | Start: {metrics['start']/n:.3f} | End: {metrics['end']/n:.3f} | "
+              f"Makespan: {metrics['makespan']/n:.3f} | Prec: {metrics['precedence_penalty']/n:.3f} | "
+              f"Overlap: {metrics['overlap_penalty']/n:.3f} | Dur: {metrics['duration_penalty']/n:.3f}")
+
+    # Save the trained model
+    os.makedirs(args.output_dir, exist_ok=True)
+    model_path = os.path.join(args.output_dir, 'gnn_model_constrained.pth')
+    torch.save(model.state_dict(), model_path)
+    print(f"\nModel saved to: {model_path}")
