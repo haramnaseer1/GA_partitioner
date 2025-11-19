@@ -11,6 +11,7 @@ Simple CLI for clients:
 import torch
 import json
 import sys
+import os
 from pathlib import Path
 from train_gnn_constrained import create_constraint_aware_model
 from torch_geometric.data import Data
@@ -40,7 +41,19 @@ def create_graph(app_data):
             float(dep_count[job['id']])
         ])
     x = torch.tensor(node_features, dtype=torch.float)
-    
+    # Normalization: load scales if available
+    scales_path = 'model_best_scales.json'
+    if os.path.isfile(scales_path):
+        with open(scales_path, 'r') as f:
+            scales = json.load(f)
+        duration_scale = scales.get('duration_scale', 1.0)
+        edge_scale = scales.get('edge_scale', 1.0)
+        # Normalize node features (processing_time)
+        x[:, 0] = x[:, 0] / duration_scale
+    else:
+        duration_scale = 1.0
+        edge_scale = 1.0
+
     # Edge index and attributes
     edge_index = []
     edge_attr = []
@@ -50,17 +63,20 @@ def create_graph(app_data):
     if edge_index:
         edge_index = torch.tensor(edge_index, dtype=torch.long).t().contiguous()
         edge_attr = torch.tensor(edge_attr, dtype=torch.float)
+        # Normalize edge features
+        edge_attr = edge_attr / edge_scale
     else:
         edge_index = torch.empty((2, 0), dtype=torch.long)
         edge_attr = torch.empty((0, 1), dtype=torch.float)
-    
+
     data = Data(
         x=x,
         edge_index=edge_index,
         edge_attr=edge_attr,
         batch=torch.zeros(num_tasks, dtype=torch.long)
     )
-    return data
+    # Return scales for denormalization
+    return data, duration_scale
 
 
 def create_eligibility_mask(app_data, num_processors=192):
@@ -87,7 +103,7 @@ def create_eligibility_mask(app_data, num_processors=192):
     return mask
 
 
-def predict_schedule(app_path, model_path='models/gnn_model_constrained.pth'):
+def predict_schedule(app_path, model_path='models/model_best.pt'):
     """Predict schedule for input application"""
     print(f"\n=== GNN Schedule Prediction ===")
     print(f"Input: {app_path}")
@@ -95,7 +111,7 @@ def predict_schedule(app_path, model_path='models/gnn_model_constrained.pth'):
     # Load application
     app_data = load_application(app_path)
     num_processors = 192  # Hardcoded in create_eligibility_mask
-    data = create_graph(app_data)
+    data, duration_scale = create_graph(app_data)
     eligibility_mask = create_eligibility_mask(app_data)
     
     # Load model
@@ -122,12 +138,15 @@ def predict_schedule(app_path, model_path='models/gnn_model_constrained.pth'):
     jobs = app_data['jobs']
     schedule = []
     processor_assignments = outputs['processor'].argmax(dim=1)
+    # Denormalize start_time, end_time, duration
+    start_times = outputs['start_time'] * duration_scale
+    end_times = outputs['end_time'] * duration_scale
     for i, job in enumerate(jobs):
         schedule.append({
             'task_id': job['id'],
             'node_id': int(processor_assignments[i].item()),
-            'start_time': float(outputs['start_time'][i].item()),
-            'end_time': float(outputs['end_time'][i].item()),
+            'start_time': float(start_times[i].item()),
+            'end_time': float(end_times[i].item()),
             'dependencies': [
                 {'task_id': msg['sender'], 'message_size': msg.get('size', 24)}
                 for msg in app_data['messages'] if msg['receiver'] == job['id']
@@ -147,7 +166,7 @@ def predict_schedule(app_path, model_path='models/gnn_model_constrained.pth'):
     print(f"\nPredicted Makespan: {makespan:.2f}")
     
     # Optionally save to file
-    out_path = Path(app_path).stem + '_gnn_schedule.json'
+    out_path = Path(app_path).stem + 'model_best_schedule.json'
     with open(out_path, 'w') as f:
         json.dump(schedule, f, indent=2)
     print(f"\n✓ Saved to {out_path}")
