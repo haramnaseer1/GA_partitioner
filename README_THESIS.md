@@ -56,35 +56,66 @@ The GNN (Graph Neural Network) model in this project is trained to predict valid
 ### What is a Graph Neural Network?
 A GNN processes graph-structured data by passing information between connected nodes, learning patterns in relationships.
 
-### Architecture Overview
-The Constraint-Aware GNN consists of:
+### Production-Optimized Platform-Aware GNN Architecture
+The latest model integrates platform information, cross-attention, and physics-based scheduling logic:
 
 1. **Input Layer**:
-   - Node features: [processing_time, deadline, num_dependencies]
-   - Edge features: [message_size]
+   - Node features: [processing_time, memory, io_intensity, ...]
+   - Edge features: [data_volume]
+   - Platform features: processor speeds, tiers, locations
 
-2. **Graph Convolutional Layers** (4 layers):
-   - GATv2Conv with 8 attention heads
-   - Hidden dimension: 256
+2. **Graph Convolutional Layers** (GATv2Conv):
+   - 3 layers, 4 attention heads, hidden dimension 192
    - Layer normalization and dropout
 
-3. **Constraint-Aware Heads**:
-   - **Processor Head**: Predicts eligible processor assignment (0-191)
-   - **Start Time Head**: Predicts task start times
-   - **Duration Head**: Predicts execution duration
-   - **Communication Delay Head**: Models inter-task delays
+3. **Cross-Attention Module**:
+   - Cross-attention between task and processor embeddings
+   - Enables platform-aware scheduling
 
-4. **Loss Functions**:
-   - Multi-task loss combining processor, timing, and constraint penalties
-   - Eligibility masking ensures valid assignments
-   - Precedence constraints enforced during training
+4. **Physics-Based Duration Head**:
+   - Predicts duration using task processing time and expected processor speed
+   - Ensures realistic execution times
+
+5. **Constraint-Aware Heads**:
+   - **Processor Assignment**: Softmax over eligible processors
+   - **Start Time Prediction**: Precedence constraints enforced during forward pass
+   - **Communication Delay Head**: Models tier-based and learned delays
+
+6. **Loss Functions**:
+   - Multi-task loss: processor assignment, makespan, precedence, overlap
+   - Dynamic constraint annealing: penalties increase during training
+   - Early stopping and checkpointing for robust training
+
+7. **Normalization & Augmentation**:
+   - Training data normalized for stable learning
+   - Structure-preserving DAG augmentation for generalization
+
+### Training Script Usage
+The new training script supports automatic train/val split, normalization, and flexible configuration:
+
+```bash
+python train_gnn_constrained.py --training_data training_data.pt --epochs 150 --batch_size 16 --hidden_dim 192 --num_processors 192 --patience 20 --model_save_path model_best.pt
+```
+
+Key arguments:
+- `--training_data`: Path to training data file
+- `--val_split`: Validation split ratio
+- `--epochs`: Number of training epochs
+- `--batch_size`: Batch size
+- `--hidden_dim`: Hidden dimension
+- `--num_processors`: Number of processors
+- `--patience`: Early stopping patience
+- `--model_save_path`: Path to save best model
 
 ### Key Features
-- Learns constraints during training (no post-processing needed)
-- Handles variable graph sizes
-- Uses PyTorch Geometric for efficient graph operations
+- Platform-aware scheduling (processor speeds, tiers, locations)
+- Physics-based duration prediction
+- Cross-attention for task-processor interaction
+- Constraint annealing for robust learning
+- Structure-preserving graph augmentation
+- Efficient training and validation with PyTorch Geometric
 
 ## Conclusion
-This project combines evolutionary optimization (GA) with deep learning (GNN) to solve task scheduling problems. The GA generates training data as tensors, which the GNN learns to predict valid schedules directly. This approach ensures constraint satisfaction while leveraging neural networks' pattern recognition capabilities.
+This project combines evolutionary optimization (GA) with a production-optimized, platform-aware GNN to solve complex task scheduling problems. The GA generates realistic training data as tensors, which the GNN learns to predict valid, efficient schedules directly. The new model architecture ensures constraint satisfaction, platform adaptation, and robust generalization, leveraging neural networks' pattern recognition and physics-based reasoning.
 
-For implementation details, refer to the code files. For experimental results, check the training logs and validation reports.
+For implementation details, see `train_gnn_constrained.py`. For experimental results, check the training logs, validation reports, and saved model checkpoints.
